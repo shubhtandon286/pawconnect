@@ -2192,19 +2192,70 @@ function addCart(name, price, icon) {
 // ── OTP ──
 function sendOTP(){
   var phone = document.getElementById('phoneInput').value.trim();
-  if(!phone || phone.length < 10){ toast('Enter a valid 10-digit number'); return; }
-  var digits = phone.replace(/[^0-9]/g,'').slice(-10);
-  var formatted = '+91' + digits;
+  if(!phone || phone.length < 10){ toast('Enter a valid 10 digit number'); return; }
+  var formatted = '+91' + phone.replace(/[^0-9]/g,'').slice(-10);
   window._pendingPhone = formatted;
   toast('Sending OTP...');
-  window.sb.auth.signInWithOtp({ phone: formatted }).then(function(res){
-    if(res.error){ toast('Error: ' + res.error.message); return; }
-    document.getElementById('otpSection').style.display='block';
-    toast('OTP sent to ' + formatted);
-  });
+
+  try {
+    if(window._recaptchaVerifier){
+      window._recaptchaVerifier.clear();
+      window._recaptchaVerifier = null;
+    }
+    window._recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+      size: 'invisible',
+      callback: function(token){ console.log('reCAPTCHA ok'); }
+    });
+    window._recaptchaVerifier.render().then(function(){
+      return window.fbAuth.signInWithPhoneNumber(formatted, window._recaptchaVerifier);
+    }).then(function(confirmationResult){
+      window._confirmationResult = confirmationResult;
+      document.getElementById('otpSection').style.display = 'block';
+      toast('✅ OTP sent to ' + formatted);
+    }).catch(function(err){
+      toast('Error: ' + err.message);
+      if(window._recaptchaVerifier){ window._recaptchaVerifier.clear(); window._recaptchaVerifier = null; }
+      console.log('OTP send error:', err);
+    });
+  } catch(e){
+    toast('Error: ' + e.message);
+    console.log('sendOTP error:', e);
+  }
 }
 function otpNext(el,idx){if(el.value.length===1&&idx<5)document.getElementById('o'+(idx+1)).focus();const full=[0,1,2,3,4,5].map(i=>document.getElementById('o'+i).value).join('');if(full.length===6)verifyOTP();}
 function verifyOTP(){
+  var otp = '';
+  for(var x=0; x<6; x++){
+    var el = document.getElementById('o'+x);
+    if(el) otp += el.value;
+  }
+  if(otp.length < 6){ toast('Enter all 6 digits'); return; }
+  if(!window._confirmationResult){ toast('Please request OTP first'); return; }
+  toast('Verifying...');
+  window._confirmationResult.confirm(otp).then(function(result){
+    var fbUser = result.user;
+    window.currentUser = { id: fbUser.uid, phone: fbUser.phoneNumber, uid: fbUser.uid };
+    localStorage.setItem('pawconnect_session', JSON.stringify({
+      access_token: 'firebase',
+      user: window.currentUser,
+      expires_at: Date.now()/1000 + 86400
+    }));
+    window.sb.from('users').select('id').eq('id', fbUser.uid).then(function(check){
+      if(!check.data || check.data.length === 0){
+        window.sb.from('users').insert({ id: fbUser.uid, phone: fbUser.phoneNumber }).then(function(){});
+      }
+    });
+    toast('🎉 Welcome to PawConnect!');
+    document.getElementById('landing').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    showPage('home');
+    loadPet();
+  }).catch(function(err){
+    toast('❌ Wrong OTP. Try again.');
+    console.log('Verify error:', err);
+  });
+}
+function verifyOTP_OLD_UNUSED(){
   var otp = '';
   for(var x=0; x<6; x++){
     var el = document.getElementById('o'+x);
@@ -2216,11 +2267,8 @@ function verifyOTP(){
     if(res.error){ toast('Wrong OTP. Try again.'); return; }
     var user = res.data.user;
     window.currentUser = user;
-
-    // First check if user already exists in users table
     window.sb.from('users').select('id').eq('id', user.id).then(function(check){
       if(!check.data || check.data.length === 0){
-        // Insert user first, then proceed
         window.sb.from('users').insert({
           id: user.id,
           phone: window._pendingPhone
