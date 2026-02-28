@@ -1049,7 +1049,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
         <input type="tel" id="phoneInput" style="color:#3D2B1F !important;background:#FAF7F4 !important;" placeholder="+91 98765 43210" maxlength="15">
         <button class="send-btn" onclick="sendOTP()">Send OTP</button>
       </div>
-      <div id="recaptcha-container"></div>
+      <div id="recaptcha-container" style="margin:1rem 0;display:flex;justify-content:center;"></div>
       <div id="otpSection" style="display:none;margin-top:1.1rem;">
         <p style="font-size:.8rem;color:#6A5A50;margin-bottom:.7rem;">Enter 6-digit OTP (demo: 123456)</p>
         <div class="otp-input-row">
@@ -2209,36 +2209,47 @@ function sendOTP(){
   window._pendingPhone = formatted;
 
   if(!window.fbAuth){
-    toast('❌ Firebase not loaded. Please check your connection.');
-    console.log('fbAuth is null - Firebase SDK not loaded');
+    toast('❌ Firebase not loaded. Try refreshing the page.');
     return;
   }
 
   toast('Sending OTP...');
-  try {
-    if(window._recaptchaVerifier){
-      window._recaptchaVerifier.clear();
+
+  // Clear old verifier
+  if(window._recaptchaVerifier){
+    try{ window._recaptchaVerifier.clear(); }catch(e){}
+    window._recaptchaVerifier = null;
+  }
+
+  // Use visible recaptcha - more reliable
+  window._recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+    size: 'normal',
+    callback: function(token){
+      // reCAPTCHA solved - now send OTP
+      window.fbAuth.signInWithPhoneNumber(formatted, window._recaptchaVerifier)
+        .then(function(confirmationResult){
+          window._confirmationResult = confirmationResult;
+          document.getElementById('otpSection').style.display = 'block';
+          toast('✅ OTP sent to ' + formatted);
+        })
+        .catch(function(err){
+          toast('Error: ' + err.message);
+          try{ window._recaptchaVerifier.clear(); }catch(e){}
+          window._recaptchaVerifier = null;
+          console.log('OTP error:', err);
+        });
+    },
+    'expired-callback': function(){
+      toast('reCAPTCHA expired. Please try again.');
+      try{ window._recaptchaVerifier.clear(); }catch(e){}
       window._recaptchaVerifier = null;
     }
-    window._recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-      size: 'invisible',
-      callback: function(token){ console.log('reCAPTCHA ok'); }
-    });
-    window._recaptchaVerifier.render().then(function(){
-      return window.fbAuth.signInWithPhoneNumber(formatted, window._recaptchaVerifier);
-    }).then(function(confirmationResult){
-      window._confirmationResult = confirmationResult;
-      document.getElementById('otpSection').style.display = 'block';
-      toast('✅ OTP sent to ' + formatted);
-    }).catch(function(err){
-      toast('Error: ' + err.message);
-      if(window._recaptchaVerifier){ window._recaptchaVerifier.clear(); window._recaptchaVerifier = null; }
-      console.log('OTP send error:', err);
-    });
-  } catch(e){
-    toast('Error: ' + e.message);
-    console.log('sendOTP error:', e);
-  }
+  });
+
+  window._recaptchaVerifier.render().catch(function(err){
+    toast('Error loading captcha: ' + err.message);
+    console.log('Recaptcha render error:', err);
+  });
 }
 function otpNext(el,idx){if(el.value.length===1&&idx<5)document.getElementById('o'+(idx+1)).focus();const full=[0,1,2,3,4,5].map(i=>document.getElementById('o'+i).value).join('');if(full.length===6)verifyOTP();}
 function verifyOTP(){
