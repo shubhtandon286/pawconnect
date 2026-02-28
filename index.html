@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PawConnect — India's #1 Pet Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script>
 /* SUPABASE EMBEDDED — No internet/CDN needed */
 /* =====================================================
@@ -283,29 +281,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.sb = sb;
 console.log('✅ sb ready:', typeof sb);
 
-// ══ FIREBASE INIT ══
-try {
-  const firebaseConfig = {
-    apiKey: "AIzaSyAUEu351q-wjBIimv8q71KXvG6Lw3WWpTY",
-    authDomain: "pawconnect-3d042.firebaseapp.com",
-    projectId: "pawconnect-3d042",
-    storageBucket: "pawconnect-3d042.firebasestorage.app",
-    messagingSenderId: "956945000148",
-    appId: "1:956945000148:web:b724e722ed0ae9bb4efd41"
-  };
-  if(typeof firebase !== 'undefined'){
-    firebase.initializeApp(firebaseConfig);
-    window.fbAuth = firebase.auth();
-    window.fbAuth.useDeviceLanguage();
-    console.log('✅ Firebase ready');
-  } else {
-    console.log('⚠️ Firebase SDK not loaded - CDN may be blocked');
-    window.fbAuth = null;
-  }
-} catch(e){
-  console.log('Firebase init error:', e);
-  window.fbAuth = null;
-}
+// Firebase disabled - using Supabase OTP
 </script>
 
 <style>
@@ -1049,7 +1025,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
         <input type="tel" id="phoneInput" style="color:#3D2B1F !important;background:#FAF7F4 !important;" placeholder="+91 98765 43210" maxlength="15">
         <button class="send-btn" onclick="sendOTP()">Send OTP</button>
       </div>
-      <div id="recaptcha-container" style="margin:1rem 0;display:flex;justify-content:center;"></div>
       <div id="otpSection" style="display:none;margin-top:1.1rem;">
         <p style="font-size:.8rem;color:#6A5A50;margin-bottom:.7rem;">Enter 6-digit OTP (demo: 123456)</p>
         <div class="otp-input-row">
@@ -2207,48 +2182,11 @@ function sendOTP(){
   if(!phone || phone.length < 10){ toast('Enter a valid 10 digit number'); return; }
   var formatted = '+91' + phone.replace(/[^0-9]/g,'').slice(-10);
   window._pendingPhone = formatted;
-
-  if(!window.fbAuth){
-    toast('❌ Firebase not loaded. Try refreshing the page.');
-    return;
-  }
-
   toast('Sending OTP...');
-
-  // Clear old verifier
-  if(window._recaptchaVerifier){
-    try{ window._recaptchaVerifier.clear(); }catch(e){}
-    window._recaptchaVerifier = null;
-  }
-
-  // Use visible recaptcha - more reliable
-  window._recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-    size: 'normal',
-    callback: function(token){
-      // reCAPTCHA solved - now send OTP
-      window.fbAuth.signInWithPhoneNumber(formatted, window._recaptchaVerifier)
-        .then(function(confirmationResult){
-          window._confirmationResult = confirmationResult;
-          document.getElementById('otpSection').style.display = 'block';
-          toast('✅ OTP sent to ' + formatted);
-        })
-        .catch(function(err){
-          toast('Error: ' + err.message);
-          try{ window._recaptchaVerifier.clear(); }catch(e){}
-          window._recaptchaVerifier = null;
-          console.log('OTP error:', err);
-        });
-    },
-    'expired-callback': function(){
-      toast('reCAPTCHA expired. Please try again.');
-      try{ window._recaptchaVerifier.clear(); }catch(e){}
-      window._recaptchaVerifier = null;
-    }
-  });
-
-  window._recaptchaVerifier.render().catch(function(err){
-    toast('Error loading captcha: ' + err.message);
-    console.log('Recaptcha render error:', err);
+  window.sb.auth.signInWithOtp({ phone: formatted }).then(function(res){
+    if(res.error){ toast('Error: ' + res.error.message); return; }
+    document.getElementById('otpSection').style.display = 'block';
+    toast('✅ OTP sent! Enter 123456');
   });
 }
 function otpNext(el,idx){if(el.value.length===1&&idx<5)document.getElementById('o'+(idx+1)).focus();const full=[0,1,2,3,4,5].map(i=>document.getElementById('o'+i).value).join('');if(full.length===6)verifyOTP();}
@@ -2259,19 +2197,19 @@ function verifyOTP(){
     if(el) otp += el.value;
   }
   if(otp.length < 6){ toast('Enter all 6 digits'); return; }
-  if(!window._confirmationResult){ toast('Please request OTP first'); return; }
   toast('Verifying...');
-  window._confirmationResult.confirm(otp).then(function(result){
-    var fbUser = result.user;
-    window.currentUser = { id: fbUser.uid, phone: fbUser.phoneNumber, uid: fbUser.uid };
+  window.sb.auth.verifyOtp({ phone: window._pendingPhone, token: otp, type: 'sms' }).then(function(res){
+    if(res.error){ toast('❌ Wrong OTP. Try again.'); return; }
+    var user = res.data.user;
+    window.currentUser = user;
     localStorage.setItem('pawconnect_session', JSON.stringify({
-      access_token: 'firebase',
-      user: window.currentUser,
+      access_token: res.data.session ? res.data.session.access_token : 'supabase',
+      user: user,
       expires_at: Date.now()/1000 + 86400
     }));
-    window.sb.from('users').select('id').eq('id', fbUser.uid).then(function(check){
+    window.sb.from('users').select('id').eq('id', user.id).then(function(check){
       if(!check.data || check.data.length === 0){
-        window.sb.from('users').insert({ id: fbUser.uid, phone: fbUser.phoneNumber }).then(function(){});
+        window.sb.from('users').insert({ id: user.id, phone: window._pendingPhone }).then(function(){});
       }
     });
     toast('🎉 Welcome to PawConnect!');
@@ -2279,9 +2217,6 @@ function verifyOTP(){
     document.getElementById('app').style.display = 'block';
     showPage('home');
     loadPet();
-  }).catch(function(err){
-    toast('❌ Wrong OTP. Try again.');
-    console.log('Verify error:', err);
   });
 }
 function verifyOTP_OLD_UNUSED(){
