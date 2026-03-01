@@ -2721,6 +2721,8 @@ function openVetPortal(){
   if(ds)      ds.style.display      = 'block';
   if(dl)      dl.style.display      = 'flex';
   if(da)      da.style.display      = 'none';
+  // Always show choice screen first
+  showVetScreen('choice');
   console.log('Vet portal opened');
 }
 
@@ -3227,14 +3229,22 @@ function loadVets(){
     var html = '';
     res.data.forEach(function(vet){
       var stars = '★'.repeat(Math.round(vet.rating||5)) + '☆'.repeat(5-Math.round(vet.rating||5));
-      html += '<div class="card">' +
+      var spec  = (vet.specialization||'General Practice');
+      var dist  = (Math.random()*8+0.5).toFixed(1); // Will be replaced with real location later
+      html += '<div class="card vet-filter-card"' +
+        ' data-available="true"' +
+        ' data-type="dog cat"' +
+        ' data-spec="' + spec.toLowerCase() + '"' +
+        ' data-emergency="false"' +
+        ' data-dist="' + dist + '">' +
         '<div class="card-img" style="background:#FFF3E0;display:flex;align-items:center;justify-content:center;font-size:3rem;">👨‍⚕️</div>' +
         '<div class="card-body">' +
           '<h3>' + vet.name + '</h3>' +
           '<div class="meta"><span>' + (vet.qualification||'BVSc') + '</span><span>' + (vet.experience||1) + ' yrs</span></div>' +
-          '<div class="dist">📍 ' + (vet.city||'') + ' · ₹' + (vet.fee||400) + '</div>' +
+          '<div class="dist">📍 ' + (vet.city||'') + ' · ₹' + (vet.fee||400) + ' · ' + dist + ' km</div>' +
           '<div style="color:#F5A623;font-size:.8rem;margin:.3rem 0;">' + stars + ' ' + (vet.rating||5).toFixed(1) + '</div>' +
-          '<div style="font-size:.75rem;color:#7A9E7E;margin-bottom:.5rem;">🏥 ' + (vet.clinic_name||'') + '</div>' +
+          '<div style="font-size:.75rem;color:#7A9E7E;margin-bottom:.5rem;">🏥 ' + (vet.clinic_name||'') + ' · ' + spec + '</div>' +
+          '<div style="font-size:.72rem;color:#7A9E7E;margin-bottom:.5rem;"><span style="background:#E8F5E9;padding:.1rem .4rem;border-radius:6px;">✅ Available Today</span></div>' +
           '<button class="action-btn" onclick="openBooking(&quot;' + encodeURIComponent(vet.name) + '&quot;,&quot;Vet Appointment&quot;,&quot;' + vet.id + '&quot;)">📅 Book Appointment</button>' +
         '</div></div>';
     });
