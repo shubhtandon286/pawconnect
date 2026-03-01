@@ -557,7 +557,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
 /* All doctor styles scoped to avoid conflicts with pet parent app */
 
 #doctorApp{font-family:'DM Sans',sans-serif;background:#0D1B2A;color:#E8F0F7;min-height:100vh;}
-#doctorLogin{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;background:radial-gradient(ellipse at 30% 50%,rgba(74,144,217,.12) 0%,transparent 60%),var(--dark);}
+#doctorLogin{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;background:radial-gradient(ellipse at 30% 50%,rgba(74,144,217,.12) 0%,transparent 60%),var(--dark);width:100%;box-sizing:border-box;}
 #doctorLogin .login-box{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:2.5rem;max-width:400px;width:100%;}
 #doctorLogin .login-logo{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--gold);margin-bottom:.3rem;}
 #doctorLogin .login-sub{font-size:.78rem;color:var(--muted);margin-bottom:.4rem;}
@@ -776,7 +776,49 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
 #doctorSection .m-actions{display:flex;gap:.5rem;margin-top:.9rem;}
 ._toast_skip{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(22,36,54,.97);border:1px solid var(--border);color:var(--text);padding:.6rem 1.4rem;border-radius:20px;font-size:.8rem;transition:transform .3s;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.4);}
 ._toast_skip_show{transform:translateX(-50%) translateY(0);}
-@media(max-width:900px){#doctorApp .layout{grid-template-columns:1fr;}#doctorApp #doctorApp .sidebar{display:none;}#doctorApp .stat-grid{grid-template-columns:1fr 1fr;}#doctorApp .two-col,#doctorApp .three-col,#doctorApp .an-grid{grid-template-columns:1fr;}#doctorApp .sg,#doctorApp .ig{grid-template-columns:1fr;}#doctorApp .rg{grid-template-columns:1fr;}}
+@media(max-width:900px){
+  #doctorApp .layout{grid-template-columns:1fr;}
+  #doctorApp .sidebar{display:none !important;}
+  #doctorApp .stat-grid{grid-template-columns:1fr 1fr;}
+  #doctorApp .two-col,#doctorApp .three-col,#doctorApp .an-grid{grid-template-columns:1fr;}
+  #doctorApp .sg,#doctorApp .ig{grid-template-columns:1fr;}
+  #doctorApp .rg{grid-template-columns:1fr;}
+  #doctorApp .page{padding:1rem;}
+  #doctorSection{overflow-x:hidden;}
+  #doctorLogin .login-box{padding:1.5rem;}
+  /* Mobile bottom nav for vet portal */
+  #vetMobileNav{display:flex !important;}
+}
+
+/* Mobile bottom nav */
+#vetMobileNav{
+  display:none;
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  background:var(--mid);
+  border-top:1px solid var(--border);
+  z-index:100;
+  padding:.4rem 0;
+  justify-content:space-around;
+}
+#vetMobileNav button{
+  background:none;
+  border:none;
+  color:var(--muted);
+  font-size:.6rem;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:.2rem;
+  cursor:pointer;
+  padding:.3rem .5rem;
+  border-radius:8px;
+  font-family:'DM Sans',sans-serif;
+}
+#vetMobileNav button.active{color:var(--blue);}
+#vetMobileNav button span{font-size:1.2rem;}
 
 /* Override body-level vars for doctor section */
 #doctorSection, #doctorLogin, #doctorApp {
@@ -2116,6 +2158,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
 
 <div class="toast" id="toast"></div>
 
+<!-- Mobile Bottom Nav for Vet -->
+<div id="vetMobileNav">
+  <button onclick="dSp('dashboard')" class="active"><span>📊</span>Dashboard</button>
+  <button onclick="dSp('queue')"><span>👥</span>Queue</button>
+  <button onclick="dSp('appointments')"><span>📅</span>Appointments</button>
+  <button onclick="dSp('records')"><span>📋</span>Records</button>
+  <button onclick="dDoLogout()"><span>🚪</span>Logout</button>
+</div>
 </div><!-- /doctorSection -->
 
 
@@ -2445,6 +2495,11 @@ function dSp(id){
   if(el)el.classList.add('active');
   var btn=document.querySelector('#doctorApp .sb-btn[data-dpage="'+id+'"]');
   if(btn)btn.classList.add('active');
+  // Update mobile nav
+  document.querySelectorAll('#vetMobileNav button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#vetMobileNav button').forEach(function(b){
+    if(b.getAttribute('onclick') && b.getAttribute('onclick').indexOf(id) > -1) b.classList.add('active');
+  });
   window.scrollTo(0,0);
 }
 
