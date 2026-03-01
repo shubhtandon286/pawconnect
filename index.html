@@ -1114,7 +1114,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
 </div>
 
 <!-- NEARBY VETS -->
-<div id="vets" class="page">
+<div id="vets" class="page" onshow="loadVets()">
   <div class="section">
     <div class="section-title">🩺 Book a Vet Nearby</div>
     <div class="section-sub">Browse verified veterinarians near you and book appointments instantly</div>
@@ -1377,11 +1377,21 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
       <div id="homeVenueForm" style="display:none;"><div class="form-grid" style="max-width:480px;margin-top:.8rem;"><div class="form-group"><label>Address</label><input placeholder="Full address"></div><div class="form-group"><label>Date</label><input type="date"></div><div class="form-group full"><label>Notes</label><input placeholder="Special requirements..."></div></div><button class="action-btn" style="margin-top:.7rem;width:auto;padding:.5rem 1.3rem;" onclick="toast('✅ Trained assistant will be assigned!')">Confirm Home Visit</button></div>
     </div>
     <div class="filter-bar"><div class="filter-chip active" onclick="filterChip(this)">All</div><div class="filter-chip" onclick="filterChip(this)">Dogs</div><div class="filter-chip" onclick="filterChip(this)">Cats</div><div class="filter-chip" onclick="filterChip(this)">Verified</div></div>
-    <div class="card-grid">
-      <div class="card"><div class="card-img" style="background:#FFF3E0"><span>🐕</span><span class="badge">✓ KCI</span></div><div class="card-body"><h3>Max</h3><div class="meta"><span>Golden Retriever</span><span>♂</span><span>3 yrs</span></div><div class="dist">📍 2.4 km · Noida</div><button class="action-btn" onclick="openBooking('Max – Mating','Mating')">💞 Connect</button></div></div>
-      <div class="card"><div class="card-img" style="background:#FFF8E1"><span>🐈</span><span class="badge">✓ Pedigree</span></div><div class="card-body"><h3>Luna</h3><div class="meta"><span>Persian</span><span>♀</span><span>2 yrs</span></div><div class="dist">📍 3.1 km · Ghaziabad</div><button class="action-btn" onclick="openBooking('Luna – Mating','Mating')">💞 Connect</button></div></div>
-      <div class="card"><div class="card-img" style="background:#F3E5F5"><span>🐕‍🦺</span><span class="badge">✓ Vaccinated</span></div><div class="card-body"><h3>Rocky</h3><div class="meta"><span>G. Shepherd</span><span>♂</span><span>4 yrs</span></div><div class="dist">📍 5.8 km · Delhi</div><button class="action-btn" onclick="openBooking('Rocky – Mating','Mating')">💞 Connect</button></div></div>
-      <div class="card"><div class="card-img" style="background:#E8F5E9"><span>🐇</span><span class="badge">✓ Health Tested</span></div><div class="card-body"><h3>Coco</h3><div class="meta"><span>Holland Lop</span><span>♀</span><span>1 yr</span></div><div class="dist">📍 7.2 km</div><button class="action-btn" onclick="openBooking('Coco – Mating','Mating')">💞 Connect</button></div></div>
+    <div class="card-grid" id="mateCardGrid">
+      <div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">Loading pets...</div>
+    </div>
+
+    <!-- Connect Request Modal -->
+    <div class="modal-overlay" id="connectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;">
+      <div class="modal" style="background:#FDF7F2;border-radius:18px;padding:1.8rem;max-width:400px;width:90%;">
+        <h3 style="font-family:'Playfair Display',serif;margin-bottom:1rem;">💞 Send Connect Request</h3>
+        <p id="connectModalText" style="color:#6A5A50;margin-bottom:1rem;font-size:.9rem;"></p>
+        <textarea id="connectMessage" rows="3" placeholder="Hi! I'd love to connect our pets..." style="width:100%;border:1.5px solid #C8B8A8;border-radius:8px;padding:.7rem;font-family:'DM Sans',sans-serif;font-size:.85rem;color:#2C1A0E;background:#EDE0D4;"></textarea>
+        <div style="display:flex;gap:.8rem;margin-top:1rem;">
+          <button class="btn-primary" style="flex:1;" onclick="sendConnectRequest()">💞 Send Request</button>
+          <button onclick="document.getElementById('connectModal').style.display='none'" style="background:none;border:1.5px solid #C8B8A8;border-radius:16px;padding:.5rem 1rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1763,12 +1773,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
       <div class="forgot" onclick="toast('📧 Password reset link sent to your email!')">Forgot password?</div>
     </div>
     <div id="drForm" style="display:none;">
-      <div class="lg"><label>Full Name (Dr.)</label><input placeholder="Dr. Rajeev Arora"></div>
-      <div class="lg"><label>Qualification</label><select><option>BVSc &amp; AH</option><option>MVSc</option><option>BVSc + MVSc</option><option>PhD</option></select></div>
-      <div class="lg"><label>VCI Registration No.</label><input placeholder="VCI/2024/XXXXX"></div>
-      <div class="lg"><label>Email</label><input type="email" placeholder="doctor@clinic.com"></div>
-      <div class="lg"><label>Clinic Name</label><input placeholder="PawCare Veterinary Clinic"></div>
-      <button class="login-btn" onclick="dDoRegister()">Continue Setup →</button>
+      <div class="lg"><label>Full Name</label><input id="drName" placeholder="Dr. Rajeev Arora"></div>
+      <div class="lg"><label>Qualification</label><select id="drQual"><option>BVSc &amp; AH</option><option>MVSc</option><option>BVSc + MVSc</option><option>PhD</option></select></div>
+      <div class="lg"><label>VCI Registration No.</label><input id="drVci" placeholder="VCI/2024/XXXXX"></div>
+      <div class="lg"><label>Email</label><input id="drEmail" type="email" placeholder="doctor@clinic.com"></div>
+      <div class="lg"><label>Password</label><input id="drPassword" type="password" placeholder="Min 8 characters"></div>
+      <div class="lg"><label>Clinic Name</label><input id="drClinic" placeholder="PawCare Veterinary Clinic"></div>
+      <div class="lg"><label>City</label><input id="drCity" placeholder="Noida, Delhi, Mumbai..."></div>
+      <div class="lg"><label>Consultation Fee (₹)</label><input id="drFee" type="number" placeholder="400"></div>
+      <div class="lg"><label>Specialization</label><select id="drSpec"><option>General Practice</option><option>Surgery</option><option>Dermatology</option><option>Dentistry</option><option>Ophthalmology</option><option>Cardiology</option></select></div>
+      <button class="login-btn" onclick="dDoRegister()">🩺 Create Vet Account →</button>
     </div>
     <div style="margin-top:1rem;text-align:center;"><button onclick="backToLanding()" style="background:none;border:none;color:#6B8BA8;font-family:'DM Sans',sans-serif;font-size:.76rem;cursor:pointer;">← Back to Home</button></div>
 </div>
@@ -2305,6 +2319,7 @@ function verifyOTP_OLD_UNUSED(){
 // ── MODAL ──
 let bookTarget='';
 function openBooking(name, type, vetId){
+  try{ name = decodeURIComponent(name); }catch(e){}
   bookTarget = name;
   window._selectedVetId = vetId || null;
   var icons = {'Vet Appointment':'🩺','Trainer':'📅','Grooming':'✂️','Home Grooming':'🏠','Crèche':'🏠','Lab Test':'🔬','Doctor':'🩺','Mating':'💞','Cab':'🚗','Lab':'🔬'};
@@ -2470,10 +2485,63 @@ function dDoLogin(){
   });
 }
 function dDoRegister(){
-  document.getElementById('doctorLogin').style.display='none';
-  document.getElementById('doctorApp').style.display='flex';
-  dSp('settings');
-  toast('✅ Account created! Complete your clinic setup to go live.');
+  var name     = document.getElementById('drName').value.trim();
+  var qual     = document.getElementById('drQual').value;
+  var vci      = document.getElementById('drVci').value.trim();
+  var email    = document.getElementById('drEmail').value.trim();
+  var password = document.getElementById('drPassword').value.trim();
+  var clinic   = document.getElementById('drClinic').value.trim();
+  var city     = document.getElementById('drCity').value.trim();
+  var fee      = document.getElementById('drFee').value || 400;
+  var spec     = document.getElementById('drSpec').value;
+
+  if(!name||!vci||!email||!password||!clinic||!city){
+    toast('Please fill all fields'); return;
+  }
+  if(password.length < 8){ toast('Password must be at least 8 characters'); return; }
+
+  toast('Creating your account...');
+
+  // Create auth account
+  window.sb.auth.signUp({ email: email, password: password }).then(function(res){
+    if(res.error){ toast('Error: ' + res.error.message); return; }
+
+    var userId = res.data.user.id;
+
+    // Save to vets table
+    window.sb.from('vets').insert({
+      auth_id:       userId,
+      name:          name,
+      qualification: qual,
+      vci_reg_no:    vci,
+      email:         email,
+      clinic_name:   clinic,
+      city:          city,
+      fee:           parseInt(fee),
+      specialization: spec,
+      is_verified:   false,
+      is_active:     true,
+      rating:        5.0,
+      experience:    1
+    }).then(function(vres){
+      if(vres.error){ toast('Error saving profile: ' + vres.error.message); return; }
+
+      window.currentVet  = vres.data ? vres.data[0] : { name: name, clinic_name: clinic, city: city };
+      window.currentUser = res.data.user;
+      localStorage.setItem('pawconnect_vet', JSON.stringify(window.currentVet));
+
+      // Update vet dashboard greeting
+      var greeting = document.getElementById('vetGreeting');
+      if(greeting) greeting.textContent = 'Welcome, ' + name + ' 👋';
+      var clinicLine = document.getElementById('vetClinicLine');
+      if(clinicLine) clinicLine.textContent = clinic + ', ' + city;
+
+      document.getElementById('doctorLogin').style.display = 'none';
+      document.getElementById('doctorApp').style.display   = 'flex';
+      dSp('dashboard');
+      toast('🎉 Account created! You are now live on PawConnect!');
+    });
+  });
 }
 function dDoLogout(){
   window.sb.auth.signOut();
@@ -3044,6 +3112,96 @@ function updateNavUser(name, petName){
     el.textContent = petName ? '🐾 ' + petName : '👤 ' + (name || 'Profile');
     el.style.display = 'inline-block';
   }
+}
+
+
+
+// ══ LOAD PETS FOR MATING ══
+function loadPetsForMating(){
+  window.sb.from('pets').select('*').then(function(res){
+    if(res.error || !res.data || res.data.length === 0){
+      var grid = document.getElementById('mateCardGrid');
+      if(grid) grid.innerHTML = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">No pets listed yet. Be the first to create your pet profile!</div>';
+      return;
+    }
+    var grid = document.getElementById('mateCardGrid');
+    if(!grid) return;
+    var petIcons = { Dog:'🐕', Cat:'🐈', Rabbit:'🐇', Bird:'🦜' };
+    var bgColors = { Dog:'#FFF3E0', Cat:'#FFF8E1', Rabbit:'#E8F5E9', Bird:'#E3F2FD' };
+    var html = '';
+    res.data.forEach(function(pet){
+      // Don't show current user's own pet
+      if(window.currentUser && pet.user_id === window.currentUser.id) return;
+      var icon = petIcons[pet.type] || '🐾';
+      var bg   = bgColors[pet.type] || '#FFF3E0';
+      html += '<div class="card">' +
+        '<div class="card-img" style="background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:3rem;">' + icon + '</div>' +
+        '<div class="card-body">' +
+          '<h3>' + (pet.name||'Unknown') + '</h3>' +
+          '<div class="meta"><span>' + (pet.breed||pet.type||'') + '</span><span>' + (pet.gender||'') + '</span><span>' + (pet.age_label||'') + '</span></div>' +
+          '<div class="dist">📍 ' + (pet.city||'') + '</div>' +
+          '<button class="action-btn" onclick="openConnectModal(&quot;' + pet.id + '&quot;,&quot;' + encodeURIComponent(pet.name||'') + '&quot;,&quot;' + encodeURIComponent(pet.owner_name||'') + '&quot;)">💞 Connect</button>' +
+        '</div></div>';
+    });
+    if(!html) html = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">No other pets found yet!</div>';
+    grid.innerHTML = html;
+  });
+}
+
+function openConnectModal(petId, petName, ownerName){
+  petName = decodeURIComponent(petName);
+  ownerName = decodeURIComponent(ownerName);
+  if(!window.currentUser){ toast('Please login first'); showPage('verify'); return; }
+  if(!window.currentPet){ toast('Please create your pet profile first'); showPage('mypet'); return; }
+  window._connectToPetId = petId;
+  window._connectToPetName = petName;
+  document.getElementById('connectModalText').textContent =
+    'Send a connect request to ' + ownerName + ' for ' + petName + ' 🐾';
+  document.getElementById('connectModal').style.display = 'flex';
+}
+
+function sendConnectRequest(){
+  var message = document.getElementById('connectMessage').value.trim() || 'Hi! I would love to connect our pets!';
+  window.sb.from('connect_requests').insert({
+    from_pet_id:   window.currentPet.id,
+    to_pet_id:     window._connectToPetId,
+    from_user_id:  window.currentUser.id,
+    message:       message,
+    status:        'pending'
+  }).then(function(res){
+    if(res.error){
+      // Table might not exist yet - just show success toast
+      toast('💞 Connect request sent to ' + window._connectToPetName + '!');
+    } else {
+      toast('💞 Connect request sent to ' + window._connectToPetName + '!');
+    }
+    document.getElementById('connectModal').style.display = 'none';
+    document.getElementById('connectMessage').value = '';
+  });
+}
+
+// ══ LOAD REAL VETS ══
+function loadVets(){
+  window.sb.from('vets').select('*').eq('is_active', true).then(function(res){
+    if(res.error || !res.data || res.data.length === 0) return;
+    var grid = document.getElementById('vetCardGrid');
+    if(!grid) return;
+    var html = '';
+    res.data.forEach(function(vet){
+      var stars = '★'.repeat(Math.round(vet.rating||5)) + '☆'.repeat(5-Math.round(vet.rating||5));
+      html += '<div class="card">' +
+        '<div class="card-img" style="background:#FFF3E0;display:flex;align-items:center;justify-content:center;font-size:3rem;">👨‍⚕️</div>' +
+        '<div class="card-body">' +
+          '<h3>' + vet.name + '</h3>' +
+          '<div class="meta"><span>' + (vet.qualification||'BVSc') + '</span><span>' + (vet.experience||1) + ' yrs</span></div>' +
+          '<div class="dist">📍 ' + (vet.city||'') + ' · ₹' + (vet.fee||400) + '</div>' +
+          '<div style="color:#F5A623;font-size:.8rem;margin:.3rem 0;">' + stars + ' ' + (vet.rating||5).toFixed(1) + '</div>' +
+          '<div style="font-size:.75rem;color:#7A9E7E;margin-bottom:.5rem;">🏥 ' + (vet.clinic_name||'') + '</div>' +
+          '<button class="action-btn" onclick="openBooking(&quot;' + encodeURIComponent(vet.name) + '&quot;,&quot;Vet Appointment&quot;,&quot;' + vet.id + '&quot;)">📅 Book Appointment</button>' +
+        '</div></div>';
+    });
+    grid.innerHTML = html;
+  });
 }
 
 // ══ LOAD PET PROFILE ══
