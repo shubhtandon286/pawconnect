@@ -1757,35 +1757,73 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
 <div id="doctorSection" style="display:none;min-height:100vh;">
 
 <div id="doctorLogin">
-  <div class="login-box">
-    <div class="login-logo">🩺 VetPortal</div>
-    <div class="login-sub">PawConnect Clinical Management System</div>
-    <div class="secure-badge">🔒 VCI Verified · Encrypted · Secure</div>
-    <div class="login-tabs">
-      <button class="login-tab active" id="dtabL" onclick="dSwitchTab('login')">Login</button>
-      <button class="login-tab" id="dtabR" onclick="dSwitchTab('reg')">Register Clinic</button>
+  <div class="login-box" style="max-width:420px;width:100%;padding:2rem 1.5rem;">
+    <div class="login-logo" style="font-size:1.4rem;margin-bottom:.3rem;">🩺 VetPortal</div>
+    <div class="login-sub" style="margin-bottom:1.5rem;">PawConnect Clinical Management System</div>
+
+    <!-- CHOICE SCREEN -->
+    <div id="dChoiceScreen">
+      <p style="color:#8AB4D4;font-size:.85rem;text-align:center;margin-bottom:1.5rem;">Welcome, Doctor! What would you like to do?</p>
+      <button class="login-btn" onclick="showVetScreen('login')" style="margin-bottom:.8rem;display:flex;align-items:center;justify-content:center;gap:.6rem;">
+        <span style="font-size:1.2rem;">🔑</span> Login to Existing Account
+      </button>
+      <button class="login-btn" onclick="showVetScreen('register')" style="background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);">
+        <span style="font-size:1.2rem;">✨</span> Create New Vet Profile
+      </button>
+      <div style="margin-top:1.2rem;text-align:center;">
+        <button onclick="backToLanding()" style="background:none;border:none;color:#6B8BA8;font-family:'DM Sans',sans-serif;font-size:.76rem;cursor:pointer;">← Back to Home</button>
+      </div>
     </div>
-    <div id="dlForm">
+
+    <!-- LOGIN FORM -->
+    <div id="dlForm" style="display:none;">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1.2rem;">
+        <button onclick="showVetScreen('choice')" style="background:none;border:none;color:#6B8BA8;cursor:pointer;font-size:1rem;">←</button>
+        <span style="color:#8AB4D4;font-size:.85rem;">Login to Your Account</span>
+      </div>
       <div class="lg"><label>Email</label><input id="dlEmail" type="email" placeholder="doctor@clinic.com"></div>
       <div class="lg"><label>Password</label><input id="dlPassword" type="password" placeholder="••••••••"></div>
       <div class="lg"><label>VCI Registration No.</label><input id="dlVci" placeholder="VCI/2024/XXXXX"></div>
-      <button class="login-btn" onclick="dDoLogin()">🩺 Enter Veterinarian Portal</button>
-      <div class="forgot" onclick="toast('📧 Password reset link sent to your email!')">Forgot password?</div>
+      <button class="login-btn" onclick="dDoLogin()">🩺 Enter Portal</button>
+      <div class="forgot" onclick="toast('📧 Password reset coming soon!')" style="margin-top:.8rem;">Forgot password?</div>
     </div>
-    <div id="drForm" style="display:none;">
+
+    <!-- REGISTER FORM -->
+    <div id="drForm" style="display:none;overflow-y:auto;max-height:70vh;">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1.2rem;">
+        <button onclick="showVetScreen('choice')" style="background:none;border:none;color:#6B8BA8;cursor:pointer;font-size:1rem;">←</button>
+        <span style="color:#8AB4D4;font-size:.85rem;">Create New Vet Profile</span>
+      </div>
       <div class="lg"><label>Full Name</label><input id="drName" placeholder="Dr. Rajeev Arora"></div>
-      <div class="lg"><label>Qualification</label><select id="drQual"><option>BVSc &amp; AH</option><option>MVSc</option><option>BVSc + MVSc</option><option>PhD</option></select></div>
+      <div class="lg"><label>Qualification</label>
+        <select id="drQual">
+          <option>BVSc &amp; AH</option>
+          <option>MVSc</option>
+          <option>BVSc + MVSc</option>
+          <option>PhD</option>
+        </select>
+      </div>
       <div class="lg"><label>VCI Registration No.</label><input id="drVci" placeholder="VCI/2024/XXXXX"></div>
       <div class="lg"><label>Email</label><input id="drEmail" type="email" placeholder="doctor@clinic.com"></div>
       <div class="lg"><label>Password</label><input id="drPassword" type="password" placeholder="Min 8 characters"></div>
+      <div class="lg"><label>Phone Number</label><input id="drPhone" type="tel" placeholder="10 digit mobile number"></div>
       <div class="lg"><label>Clinic Name</label><input id="drClinic" placeholder="PawCare Veterinary Clinic"></div>
       <div class="lg"><label>City</label><input id="drCity" placeholder="Noida, Delhi, Mumbai..."></div>
       <div class="lg"><label>Consultation Fee (₹)</label><input id="drFee" type="number" placeholder="400"></div>
-      <div class="lg"><label>Specialization</label><select id="drSpec"><option>General Practice</option><option>Surgery</option><option>Dermatology</option><option>Dentistry</option><option>Ophthalmology</option><option>Cardiology</option></select></div>
-      <button class="login-btn" onclick="dDoRegister()">🩺 Create Vet Account →</button>
+      <div class="lg"><label>Specialization</label>
+        <select id="drSpec">
+          <option>General Practice</option>
+          <option>Surgery</option>
+          <option>Dermatology</option>
+          <option>Dentistry</option>
+          <option>Ophthalmology</option>
+          <option>Cardiology</option>
+        </select>
+      </div>
+      <button class="login-btn" onclick="dDoRegister()" style="margin-top:.5rem;">✨ Create My Vet Profile</button>
     </div>
-    <div style="margin-top:1rem;text-align:center;"><button onclick="backToLanding()" style="background:none;border:none;color:#6B8BA8;font-family:'DM Sans',sans-serif;font-size:.76rem;cursor:pointer;">← Back to Home</button></div>
-</div>
+
+  </div>
 </div>
 
 <div id="doctorApp">
