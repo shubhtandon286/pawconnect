@@ -2280,15 +2280,19 @@ function addCart(name, price, icon) {
 
 // ── OTP ──
 function sendOTP(){
-  var phone = document.getElementById('phoneInput').value.trim();
-  if(!phone || phone.length < 10){ toast('Enter a valid 10 digit number'); return; }
-  var formatted = '+91' + phone.replace(/[^0-9]/g,'').slice(-10);
+  var phone   = document.getElementById('phoneInput').value.trim();
+  var digits  = phone.replace(/[^0-9]/g,'');
+  // Handle if user types +91 already
+  if(digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+  if(digits.length !== 10){ toast('Enter valid 10 digit number'); return; }
+  var formatted = '+91' + digits;
   window._pendingPhone = formatted;
+  console.log('Sending OTP to:', formatted);
   toast('Sending OTP...');
   window.sb.auth.signInWithOtp({ phone: formatted }).then(function(res){
-    if(res.error){ toast('Error: ' + res.error.message); return; }
+    if(res.error){ toast('Error: ' + (res.error.message || JSON.stringify(res.error))); return; }
     document.getElementById('otpSection').style.display = 'block';
-    toast('✅ OTP sent! Enter 123456');
+    toast('✅ OTP sent! Enter your test OTP');
   });
 }
 function otpNext(el,idx){if(el.value.length===1&&idx<5)document.getElementById('o'+(idx+1)).focus();const full=[0,1,2,3,4,5].map(i=>document.getElementById('o'+i).value).join('');if(full.length===6)verifyOTP();}
@@ -2299,9 +2303,14 @@ function verifyOTP(){
     if(el) otp += el.value;
   }
   if(otp.length < 6){ toast('Enter all 6 digits'); return; }
+  console.log('Verifying OTP:', otp, 'for phone:', window._pendingPhone);
   toast('Verifying...');
   window.sb.auth.verifyOtp({ phone: window._pendingPhone, token: otp, type: 'sms' }).then(function(res){
-    if(res.error){ toast('❌ Wrong OTP. Try again.'); return; }
+    if(res.error){
+      console.log('OTP error:', JSON.stringify(res.error));
+      toast('❌ ' + (res.error.message || 'Wrong OTP. Try again.'));
+      return;
+    }
     var user = res.data.user;
     window.currentUser = user;
     localStorage.setItem('pawconnect_session', JSON.stringify({
