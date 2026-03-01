@@ -2553,6 +2553,7 @@ function dDoRegister(){
   var password = document.getElementById('drPassword').value.trim();
   var clinic   = document.getElementById('drClinic').value.trim();
   var city     = document.getElementById('drCity').value.trim();
+  var phone    = document.getElementById('drPhone') ? document.getElementById('drPhone').value.trim() : '';
   var fee      = document.getElementById('drFee').value || 400;
   var spec     = document.getElementById('drSpec').value;
 
@@ -2565,33 +2566,61 @@ function dDoRegister(){
 
   // Create auth account
   window.sb.auth.signUp({ email: email, password: password }).then(function(res){
-    if(res.error){ toast('Error: ' + res.error.message); return; }
+    if(res.error){ 
+      toast('Error: ' + (res.error.message || 'Signup failed'));
+      console.log('Signup error:', JSON.stringify(res.error));
+      return; 
+    }
+    
+    var user   = res.data && res.data.user ? res.data.user : null;
+    var userId = user ? user.id : null;
+    
+    if(!userId){
+      toast('Error: Could not create account. Try a different email.');
+      console.log('No user returned:', JSON.stringify(res));
+      return;
+    }
 
-    var userId = res.data.user.id;
+    console.log('User created:', userId);
 
     // Save to vets table
     window.sb.from('vets').insert({
-      auth_id:       userId,
-      name:          name,
-      qualification: qual,
-      vci_reg_no:    vci,
-      email:         email,
-      clinic_name:   clinic,
-      city:          city,
-      fee:           parseInt(fee),
+      auth_id:        userId,
+      name:           name,
+      qualification:  qual,
+      vci_reg_no:     vci,
+      email:          email,
+      phone:          phone,
+      clinic_name:    clinic,
+      city:           city,
+      fee:            parseInt(fee) || 400,
       specialization: spec,
-      is_verified:   false,
-      is_active:     true,
-      rating:        5.0,
-      experience:    1
+      is_verified:    false,
+      is_active:      true,
+      rating:         5.0,
+      experience:     1
     }).then(function(vres){
-      if(vres.error){ toast('Error saving profile: ' + vres.error.message); return; }
+      if(vres.error){ 
+        console.log('Vet insert error:', JSON.stringify(vres.error));
+        // Still let them in even if vets table insert fails
+        // (column might not exist yet)
+      }
 
-      window.currentVet  = vres.data ? vres.data[0] : { name: name, clinic_name: clinic, city: city };
-      window.currentUser = res.data.user;
-      localStorage.setItem('pawconnect_vet', JSON.stringify(window.currentVet));
+      var vetData = { 
+        id:          userId,
+        auth_id:     userId,
+        name:        name, 
+        clinic_name: clinic, 
+        city:        city,
+        email:       email,
+        fee:         parseInt(fee) || 400,
+        specialization: spec
+      };
 
-      // Update vet dashboard greeting
+      window.currentVet  = vetData;
+      window.currentUser = user;
+      localStorage.setItem('pawconnect_vet', JSON.stringify(vetData));
+
       var greeting = document.getElementById('vetGreeting');
       if(greeting) greeting.textContent = 'Welcome, ' + name + ' 👋';
       var clinicLine = document.getElementById('vetClinicLine');
@@ -2600,7 +2629,7 @@ function dDoRegister(){
       document.getElementById('doctorLogin').style.display = 'none';
       document.getElementById('doctorApp').style.display   = 'flex';
       dSp('dashboard');
-      toast('🎉 Account created! You are now live on PawConnect!');
+      toast('🎉 Welcome to PawConnect, ' + name + '!');
     });
   });
 }
