@@ -30,7 +30,7 @@
           const r = await fetch(url + '/auth/v1/otp', {
             method: 'POST',
             headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, channel: 'sms' })
+            body: JSON.stringify({ phone: String(phone), channel: 'sms' })
           });
           const data = await r.json();
           if (!r.ok) return { error: data };
@@ -43,7 +43,7 @@
           const r = await fetch(url + '/auth/v1/verify', {
             method: 'POST',
             headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, token, type: type || 'sms' })
+            body: JSON.stringify({ phone, token: String(token), type: type || 'sms' })
           });
           const data = await r.json();
           if (!r.ok) return { data: null, error: data };
@@ -2290,9 +2290,13 @@ function sendOTP(){
   console.log('Sending OTP to:', formatted);
   toast('Sending OTP...');
   window.sb.auth.signInWithOtp({ phone: formatted }).then(function(res){
-    if(res.error){ toast('Error: ' + (res.error.message || JSON.stringify(res.error))); return; }
+    console.log('OTP send response:', JSON.stringify(res));
+    if(res.error){ 
+      toast('Error: ' + (res.error.message || res.error.msg || JSON.stringify(res.error))); 
+      return; 
+    }
     document.getElementById('otpSection').style.display = 'block';
-    toast('✅ OTP sent! Enter your test OTP');
+    toast('✅ OTP sent! Enter 123456');
   });
 }
 function otpNext(el,idx){if(el.value.length===1&&idx<5)document.getElementById('o'+(idx+1)).focus();const full=[0,1,2,3,4,5].map(i=>document.getElementById('o'+i).value).join('');if(full.length===6)verifyOTP();}
@@ -2306,9 +2310,13 @@ function verifyOTP(){
   console.log('Verifying OTP:', otp, 'for phone:', window._pendingPhone);
   toast('Verifying...');
   window.sb.auth.verifyOtp({ phone: window._pendingPhone, token: otp, type: 'sms' }).then(function(res){
+    console.log('OTP verify response:', JSON.stringify(res));
     if(res.error){
-      console.log('OTP error:', JSON.stringify(res.error));
-      toast('❌ ' + (res.error.message || 'Wrong OTP. Try again.'));
+      console.log('OTP error detail:', JSON.stringify(res.error));
+      toast('❌ ' + (res.error.msg || res.error.message || 'Wrong OTP. Try again.'));
+      // Clear boxes on error
+      for(var c=0;c<6;c++){ var b=document.getElementById('o'+c); if(b) b.value=''; }
+      document.getElementById('o0').focus();
       return;
     }
     var user = res.data.user;
@@ -2487,10 +2495,16 @@ goDemo(0);
 /* ════════ DOCTOR PORTAL JS ════════ */
 // ── AUTH ──
 function dSwitchTab(t){
-  document.getElementById('dtabL').classList.toggle('active',t==='login');
-  document.getElementById('dtabR').classList.toggle('active',t==='reg');
-  document.getElementById('dlForm').style.display=t==='login'?'block':'none';
-  document.getElementById('drForm').style.display=t==='reg'?'block':'none';
+  showVetScreen(t==='login'?'login':'register');
+}
+function showVetScreen(screen){
+  var c=document.getElementById('dChoiceScreen');
+  var l=document.getElementById('dlForm');
+  var r=document.getElementById('drForm');
+  if(c) c.style.display=(screen==='choice')?'block':'none';
+  if(l) l.style.display=(screen==='login')?'block':'none';
+  if(r) r.style.display=(screen==='register')?'block':'none';
+  console.log('VetScreen:', screen);
 }
 function dDoLogin(){
   var email    = document.getElementById('dlEmail').value.trim();
