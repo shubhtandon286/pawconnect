@@ -2535,44 +2535,43 @@ function dDoRegister(){
 
   toast('Creating your account...');
 
-  // First try to sign in (account might exist already)
-  // Then sign up if not exists
-  window.sb.auth.signInWithPassword({ email: email, password: password }).then(function(signInRes){
-    var existingUser = (!signInRes.error && signInRes.data && signInRes.data.user) ? signInRes.data.user : null;
+  // Try signup directly
+  window.sb.auth.signUp({ email: email, password: password }).then(function(res){
+    console.log('Signup response:', JSON.stringify(res));
     
-    if(existingUser){
-      // Account exists - check if already in vets table
-      window.sb.from('vets').select('*').eq('auth_id', existingUser.id).then(function(vCheck){
-        if(vCheck.data && vCheck.data.length > 0){
-          toast('❌ This email already has a vet account. Please use Login instead.');
-        } else {
-          // Has auth but no vet profile - create vet profile
-          continueVetRegistration(existingUser, name, qual, vci, email, phone, clinic, city, fee, spec);
-        }
-      });
+    if(res.error){
+      // If already registered, try login instead
+      if(res.error.message && res.error.message.toLowerCase().indexOf('already') > -1){
+        toast('Email already registered. Trying to login...');
+        window.sb.auth.signInWithPassword({ email: email, password: password }).then(function(loginRes){
+          if(loginRes.error){ toast('❌ Wrong password for existing account.'); return; }
+          continueVetRegistration(loginRes.data.user, name, qual, vci, email, phone, clinic, city, fee, spec);
+        });
+        return;
+      }
+      var errMsg = res.error.message || res.error.msg || JSON.stringify(res.error);
+      toast('❌ ' + errMsg);
       return;
     }
     
-    // Account does not exist - create new
-    window.sb.auth.signUp({ email: email, password: password }).then(function(res){
-    if(res.error){ 
-      toast('Error: ' + (res.error.message || 'Signup failed'));
-      console.log('Signup error:', JSON.stringify(res.error));
-      return; 
-    }
-    
     var user   = res.data && res.data.user ? res.data.user : null;
-    var userId = user ? user.id : null;
-
-    if(!userId){
-      toast('Account created! Please login now.');
-      showVetScreen('login');
+    
+    if(!user || !user.id){
+      // Supabase returned success but no user - email confirmation may be pending
+      // Try signing in immediately
+      window.sb.auth.signInWithPassword({ email: email, password: password }).then(function(loginRes){
+        if(loginRes.error || !loginRes.data || !loginRes.data.user){
+          toast('✅ Account created! Please check email to confirm, then Login.');
+          showVetScreen('login');
+          return;
+        }
+        continueVetRegistration(loginRes.data.user, name, qual, vci, email, phone, clinic, city, fee, spec);
+      });
       return;
     }
 
     continueVetRegistration(user, name, qual, vci, email, phone, clinic, city, fee, spec);
   }); // signUp
-  }); // signIn check
 }
 
 function continueVetRegistration(user, name, qual, vci, email, phone, clinic, city, fee, spec){
@@ -3197,29 +3196,49 @@ function updateNavUser(name, petName){
 
 // ══ LOAD PETS FOR MATING ══
 function loadPetsForMating(){
+  var grid = document.getElementById('mateCardGrid');
+  if(grid) grid.innerHTML = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">Loading pets...</div>';
+  
   window.sb.from('pets').select('*').then(function(res){
-    if(res.error || !res.data || res.data.length === 0){
-      var grid = document.getElementById('mateCardGrid');
-      if(grid) grid.innerHTML = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">No pets listed yet. Be the first to create your pet profile!</div>';
+    console.log('Pets query:', JSON.stringify(res));
+    if(!grid) return;
+    
+    if(res.error){
+      grid.innerHTML = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">Could not load pets: ' + (res.error.message||'unknown error') + '</div>';
       return;
     }
-    var grid = document.getElementById('mateCardGrid');
-    if(!grid) return;
-    var petIcons = { Dog:'🐕', Cat:'🐈', Rabbit:'🐇', Bird:'🦜' };
-    var bgColors = { Dog:'#FFF3E0', Cat:'#FFF8E1', Rabbit:'#E8F5E9', Bird:'#E3F2FD' };
+    
+    if(!res.data || res.data.length === 0){
+      grid.innerHTML = '<div style="text-align:center;padding:2rem;grid-column:1/-1;">' +
+        '<div style="font-size:3rem;margin-bottom:.5rem;">🐾</div>' +
+        '<p style="color:#6A5A50;font-weight:600;">No pets listed yet!</p>' +
+        '<p style="color:#9A8070;font-size:.85rem;">Create your pet profile and be the first!</p>' +
+        '<button class="btn-primary" style="margin-top:1rem;" onclick="showPage(\"profile\")">Create Pet Profile →</button>' +
+        '</div>';
+      return;
+    }
+    
+    var petIcons = { Dog:'🐕', Cat:'🐈', Rabbit:'🐇', Bird:'🦜', dog:'🐕', cat:'🐈' };
+    var bgColors = { Dog:'#FFF3E0', Cat:'#FFF8E1', Rabbit:'#E8F5E9', Bird:'#E3F2FD', dog:'#FFF3E0', cat:'#FFF8E1' };
     var html = '';
     res.data.forEach(function(pet){
-      // Don't show current user's own pet
-      if(window.currentUser && pet.user_id === window.currentUser.id) return;
-      var icon = petIcons[pet.type] || '🐾';
-      var bg   = bgColors[pet.type] || '#FFF3E0';
+      if(window.currentUser && (pet.user_id === window.currentUser.id || pet.id === window.currentUser.id)) return;
+      var type = pet.type || pet.pet_type || 'Dog';
+      var icon = petIcons[type] || '🐾';
+      var bg   = bgColors[type] || '#FFF3E0';
+      var petName = pet.name || pet.pet_name || 'Unknown';
+      var ownerName = pet.owner_name || pet.ownerName || 'Pet Parent';
+      var city = pet.city || pet.location || '';
+      var breed = pet.breed || type;
+      var gender = pet.gender || '';
+      var age = pet.age_label || pet.age || '';
       html += '<div class="card">' +
         '<div class="card-img" style="background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:3rem;">' + icon + '</div>' +
         '<div class="card-body">' +
-          '<h3>' + (pet.name||'Unknown') + '</h3>' +
-          '<div class="meta"><span>' + (pet.breed||pet.type||'') + '</span><span>' + (pet.gender||'') + '</span><span>' + (pet.age_label||'') + '</span></div>' +
-          '<div class="dist">📍 ' + (pet.city||'') + '</div>' +
-          '<button class="action-btn" onclick="openConnectModal(&quot;' + pet.id + '&quot;,&quot;' + encodeURIComponent(pet.name||'') + '&quot;,&quot;' + encodeURIComponent(pet.owner_name||'') + '&quot;)">💞 Connect</button>' +
+          '<h3>' + petName + '</h3>' +
+          '<div class="meta"><span>' + breed + '</span>' + (gender?'<span>'+gender+'</span>':'') + (age?'<span>'+age+'</span>':'') + '</div>' +
+          (city?'<div class="dist">📍 ' + city + '</div>':'') +
+          '<button class="action-btn" onclick="openConnectModal(&quot;' + (pet.id||'') + '&quot;,&quot;' + encodeURIComponent(petName) + '&quot;,&quot;' + encodeURIComponent(ownerName) + '&quot;)">💞 Connect</button>' +
         '</div></div>';
     });
     if(!html) html = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">No other pets found yet!</div>';
