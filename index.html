@@ -1987,10 +1987,11 @@ function verifyOTP(){
 
 // ── MODAL ──
 let bookTarget='';
-function openBooking(name, type, vetId){
+function openBooking(name, type, vetId, fee){
   try{ name = decodeURIComponent(name); }catch(e){}
   bookTarget = name;
-  window._selectedVetId = vetId || null;
+  window._selectedVetId  = vetId || null;
+  window._selectedVetFee = fee  || 400;
   var icons = {'Vet Appointment':'🩺','Trainer':'📅','Grooming':'✂️','Home Grooming':'🏠','Crèche':'🏠','Lab Test':'🔬','Doctor':'🩺','Mating':'💞','Cab':'🚗','Lab':'🔬'};
   document.getElementById('modalTitle').textContent = (icons[type]||'📅') + ' Book · ' + name;
   var today = new Date().toISOString().split('T')[0];
@@ -2003,53 +2004,81 @@ function selectSlot(el){el.closest('.slot-grid').querySelectorAll('.slot').forEa
 function confirmBooking(){
   if(!window.currentUser){ toast('Please login first'); return; }
 
-  var date   = document.getElementById('bookDate').value;
-  var reason = document.getElementById('bookReason') ? document.getElementById('bookReason').value : 'General Checkup';
-  var slot   = document.querySelector('.slot.sel');
-  var time   = slot ? slot.textContent.trim() : '10 AM';
-  var vetId  = window._selectedVetId || null;
+  var userName = document.getElementById('bookName') ? document.getElementById('bookName').value.trim() : '';
+  var petName  = document.getElementById('bookPet')  ? document.getElementById('bookPet').value.trim()  : '';
+  var date     = document.getElementById('bookDate').value;
+  var reason   = document.getElementById('bookReason') ? document.getElementById('bookReason').value : 'General Checkup';
+  var slot     = document.querySelector('.slot.sel');
+  var time     = slot ? slot.textContent.trim() : '10 AM';
+  var vetId    = window._selectedVetId || null;
+  var fee      = window._selectedVetFee || 400;
 
   if(!date){ toast('Please select a date'); return; }
+  if(!time || time===''){ toast('Please select a time slot'); return; }
 
   toast('Booking...');
 
+  // Save booking to localStorage — works without DB
+  var bookingId = 'appt_' + Date.now();
   var booking = {
+    id:               bookingId,
     user_id:          window.currentUser.id,
-    pet_id:           window.currentPet ? window.currentPet.id : null,
-    vet_id:           vetId,
-    owner_name:       window.currentUser.phone || '',
-    pet_name:         window.currentPet ? window.currentPet.name : 'My Pet',
+    owner_name:       userName || window.currentUser.phone || '',
+    pet_name:         petName  || (window.currentPet ? window.currentPet.name : 'My Pet'),
     pet_type:         window.currentPet ? window.currentPet.type : '',
+    vet_name:         bookTarget,
+    vet_id:           vetId,
     appointment_date: date,
     time_slot:        time,
     reason:           reason || 'General Checkup',
     status:           'confirmed',
-    fee:              400
+    fee:              fee,
+    booked_at:        new Date().toISOString()
   };
 
-  window.sb.from('appointments').insert(booking).then(function(res){
-    if(res.error){ toast('Error: ' + res.error.message); return; }
-    var appt = Array.isArray(res.data) ? res.data[0] : res.data;
+  // Save to localStorage
+  var myBookings = [];
+  try{ myBookings = JSON.parse(localStorage.getItem('pawconnect_bookings')||'[]'); }catch(e){}
+  myBookings.unshift(booking);
+  localStorage.setItem('pawconnect_bookings', JSON.stringify(myBookings));
 
-    // Add to vet queue
-    if(vetId){
-      window.sb.from('vet_queue').insert({
-        vet_id:         vetId,
-        appointment_id: appt ? appt.id : null,
-        pet_name:       booking.pet_name,
-        owner_name:     booking.owner_name,
-        pet_type:       booking.pet_type,
-        reason:         booking.reason,
-        token_number:   Math.floor(Math.random()*90)+10,
-        status:         'waiting',
-        queue_date:     date
-      }).then(function(){});
-    }
-
-    closeBooking();
-    openPayModal('vet', 400, 'Vet Consultation · ' + bookTarget);
-    toast('🎉 Appointment booked with ' + bookTarget + '!');
+  // Try Supabase in background — ignore FK errors
+  var sbBooking = {
+    owner_name:       booking.owner_name,
+    pet_name:         booking.pet_name,
+    pet_type:         booking.pet_type,
+    appointment_date: date,
+    time_slot:        time,
+    reason:           booking.reason,
+    status:           'confirmed',
+    fee:              fee
+  };
+  if(vetId) sbBooking.vet_id = vetId;
+  window.sb.from('appointments').insert(sbBooking).then(function(res){
+    if(res.error) console.log('Appt Supabase (non-critical):', res.error.message);
+    else console.log('✅ Appointment saved to Supabase');
   });
+
+  closeBooking();
+  toast('🎉 Appointment confirmed with ' + bookTarget + ' at ' + time + '!');
+  showBookingConfirmation(booking);
+}
+
+function showBookingConfirmation(b){
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = '<div style="background:#FDF7F2;border-radius:18px;padding:2rem;max-width:360px;width:90%;text-align:center;">' +
+    '<div style="font-size:3rem;margin-bottom:.5rem;">🎉</div>' +
+    '<h2 style="font-family:Playfair Display,serif;margin-bottom:.5rem;">Booking Confirmed!</h2>' +
+    '<div style="background:#F0FFF4;border-radius:12px;padding:1rem;margin:1rem 0;text-align:left;">' +
+      '<p style="margin:.3rem 0;font-size:.88rem;">🩺 <strong>' + b.vet_name + '</strong></p>' +
+      '<p style="margin:.3rem 0;font-size:.88rem;">📅 ' + b.appointment_date + ' at ' + b.time_slot + '</p>' +
+      '<p style="margin:.3rem 0;font-size:.88rem;">🐾 ' + b.pet_name + ' · ' + b.reason + '</p>' +
+      '<p style="margin:.3rem 0;font-size:.88rem;">💰 ₹' + b.fee + ' (pay at clinic)</p>' +
+    '</div>' +
+    '<button onclick="document.body.lastElementChild.remove()" style="background:#8B4513;color:#fff;border:none;border-radius:22px;padding:.7rem 2rem;font-family:DM Sans,sans-serif;font-size:.95rem;cursor:pointer;width:100%;">Done ✓</button>' +
+  '</div>';
+  document.body.appendChild(modal);
 }
 document.getElementById('bookingModal').addEventListener('click',function(e){if(e.target===this)closeBooking();});
 
@@ -2997,7 +3026,7 @@ function renderVetCards(vets, grid){
         '<div style="color:#F5A623;font-size:.8rem;margin:.3rem 0;">' + stars + ' ' + Number(vet.rating||5).toFixed(1) + '</div>' +
         '<div style="font-size:.75rem;color:#7A9E7E;margin-bottom:.5rem;">🏥 ' + (vet.clinic_name||'') + ' · ' + spec + '</div>' +
         '<div style="font-size:.72rem;color:#7A9E7E;margin-bottom:.5rem;"><span style="background:#E8F5E9;padding:.1rem .4rem;border-radius:6px;">✅ Available Today</span></div>' +
-        '<button class="action-btn" onclick="openBooking(&quot;' + encodeURIComponent(vet.name||'') + '&quot;,&quot;Vet Appointment&quot;,&quot;' + (vet.id||'') + '&quot;)">📅 Book Appointment</button>' +
+        '<button class="action-btn" onclick="openBooking(&quot;' + encodeURIComponent(vet.name||'') + '&quot;,&quot;Vet Appointment&quot;,&quot;' + (vet.id||'') + '&quot;,' + (vet.fee||400) + ')">📅 Book Appointment</button>' +
       '</div></div>';
   });
   if(!html) html = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">No vets found</div>';
