@@ -849,7 +849,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
 </div>
 
 <!-- NEARBY VETS -->
-<div id="vets" class="page" onshow="loadVets()">
+<div id="vets" class="page">
   <div class="section">
     <div class="section-title">🩺 Book a Vet Nearby</div>
     <div class="section-sub">Browse verified veterinarians near you and book appointments instantly</div>
@@ -861,123 +861,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
       <div class="filter-chip" onclick="filterChip(this)">Emergency</div>
       <div class="filter-chip" onclick="filterChip(this)">Within 5 km</div>
     </div>
-    <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));">
-
-      <div class="vet-card">
-        <div class="vet-header">
-          <div class="vet-avatar">👨‍⚕️</div>
-          <div style="flex:1;">
-            <h3>Dr. Rajeev Arora</h3>
-            <p>BVSc, MVSc · Small Animals</p>
-            <div class="stars">★★★★★ 4.9 <span style="color:#9A8070;font-size:.7rem;">(312 reviews)</span></div>
-          </div>
-          <div><span class="badge" style="position:static;display:inline-block;">✓ Verified</span></div>
-        </div>
-        <div class="vet-body">
-          <div style="font-size:.78rem;color:#6A5A50;margin-bottom:.6rem;">📍 2.3 km · PawCare Clinic, Noida Sec-62</div>
-          <div class="tag-row"><span class="tag">Dogs</span><span class="tag">Cats</span><span class="tag">Surgery</span><span class="tag">Vaccination</span></div>
-          <div class="vet-avail"><span class="avail-slot">9 AM ✓</span><span class="avail-slot busy">10 AM Full</span><span class="avail-slot">11 AM ✓</span><span class="avail-slot">2 PM ✓</span><span class="avail-slot busy">4 PM Full</span></div>
-          <div class="fee-row"><div><div class="fee">₹400 / visit</div><div class="wait" style="color:var(--rust);">Queue: <strong>3 patients</strong> <span class="queue-badge">~30 min wait</span></div></div></div>
-          <button class="action-btn" onclick="openBooking('Dr. Rajeev Arora','Vet Appointment','6133916f-886a-4200-a225-f3440f52e118')">📅 Book Appointment</button>
-        </div>
-      </div>
-
-      <div class="vet-card">
-        <div class="vet-header">
-          <div class="vet-avatar">👩‍⚕️</div>
-          <div style="flex:1;">
-            <h3>Dr. Meena Gupta</h3>
-            <p>BVSc · General Practice</p>
-            <div class="stars">★★★★☆ 4.7 <span style="color:#9A8070;font-size:.7rem;">(198 reviews)</span></div>
-          </div>
-          <div><span class="badge badge-blue" style="position:static;display:inline-block;">✓ Verified</span></div>
-        </div>
-        <div class="vet-body">
-          <div style="font-size:.78rem;color:#6A5A50;margin-bottom:.6rem;">📍 4.1 km · PetCare Centre, Vasundhara</div>
-          <div class="tag-row"><span class="tag">Dogs</span><span class="tag">Cats</span><span class="tag">Rabbits</span><span class="tag">Deworming</span></div>
-          <div class="vet-avail"><span class="avail-slot busy">9 AM Full</span><span class="avail-slot">10 AM ✓</span><span class="avail-slot">12 PM ✓</span><span class="avail-slot">3 PM ✓</span></div>
-          <div class="fee-row"><div><div class="fee">₹350 / visit</div><div class="wait">Queue: <strong>1 patient</strong> <span class="queue-badge" style="background:var(--sage);">~10 min wait</span></div></div></div>
-          <button class="action-btn" onclick="openBooking('Dr. Meena Gupta','Vet Appointment','c003e8ac-b254-4e11-ab7c-adc3b5f257b8')">📅 Book Appointment</button>
-        </div>
-      </div>
-
-      <div class="vet-card">
-        <div class="vet-header">
-          <div class="vet-avatar">🧑‍⚕️</div>
-          <div style="flex:1;">
-            <h3>Dr. Anil Sharma</h3>
-            <p>MVSc · Surgery & Ortho</p>
-            <div class="stars">★★★★★ 4.8 <span style="color:#9A8070;font-size:.7rem;">(267 reviews)</span></div>
-          </div>
-          <div><span class="badge" style="position:static;display:inline-block;">✓ Verified</span></div>
-        </div>
-        <div class="vet-body">
-          <div style="font-size:.78rem;color:#6A5A50;margin-bottom:.6rem;">📍 6.2 km · AnimalCare Hospital, Delhi</div>
-          <div class="tag-row"><span class="tag">Surgery</span><span class="tag">Ortho</span><span class="tag">Emergency</span><span class="tag">X-Ray</span></div>
-          <div class="vet-avail"><span class="avail-slot">10 AM ✓</span><span class="avail-slot busy">11 AM Full</span><span class="avail-slot">1 PM ✓</span><span class="avail-slot">5 PM ✓</span></div>
-          <div class="fee-row"><div><div class="fee">₹600 / visit</div><div class="wait" style="color:var(--rust);">Queue: <strong>5 patients</strong> <span class="queue-badge">~50 min wait</span></div></div></div>
-          <button class="action-btn" onclick="openBooking('Dr. Anil Sharma','Vet Appointment','4c3095f7-fc34-4977-bdc2-cb06bcce6ea3')">📅 Book Appointment</button>
-        </div>
-      </div>
-
-      <div class="vet-card">
-        <div class="vet-header">
-          <div class="vet-avatar">👩‍⚕️</div>
-          <div style="flex:1;">
-            <h3>Dr. Sunita Rao</h3>
-            <p>BVSc · Exotic & Birds</p>
-            <div class="stars">★★★★★ 5.0 <span style="color:#9A8070;font-size:.7rem;">(89 reviews)</span></div>
-          </div>
-          <div><span class="badge badge-purple" style="position:static;display:inline-block;">Exotic Specialist</span></div>
-        </div>
-        <div class="vet-body">
-          <div style="font-size:.78rem;color:#6A5A50;margin-bottom:.6rem;">📍 8.0 km · ExoticPet Clinic, Indirapuram</div>
-          <div class="tag-row"><span class="tag">Birds</span><span class="tag">Rabbits</span><span class="tag">Reptiles</span><span class="tag">Fish</span></div>
-          <div class="vet-avail"><span class="avail-slot">11 AM ✓</span><span class="avail-slot">2 PM ✓</span><span class="avail-slot">4 PM ✓</span></div>
-          <div class="fee-row"><div><div class="fee">₹500 / visit</div><div class="wait"><span class="queue-badge" style="background:var(--sage);">No wait</span></div></div></div>
-          <button class="action-btn" onclick="openBooking('Dr. Sunita Rao','Vet Appointment','14d525b2-508f-45ee-b017-45fa543498c1')">📅 Book Appointment</button>
-        </div>
-      </div>
-
-      <div class="vet-card">
-        <div class="vet-header">
-          <div class="vet-avatar">👨‍⚕️</div>
-          <div style="flex:1;">
-            <h3>Dr. Rahul Verma</h3>
-            <p>BVSc · Home Visits Available</p>
-            <div class="stars">★★★★☆ 4.6 <span style="color:#9A8070;font-size:.7rem;">(143 reviews)</span></div>
-          </div>
-          <div><span class="badge badge-blue" style="position:static;display:inline-block;">Home Visit</span></div>
-        </div>
-        <div class="vet-body">
-          <div style="font-size:.78rem;color:#6A5A50;margin-bottom:.6rem;">📍 3.5 km · PetHealth Hub, Ghaziabad</div>
-          <div class="tag-row"><span class="tag">Home Visits</span><span class="tag">Vaccination</span><span class="tag">Check-up</span></div>
-          <div class="vet-avail"><span class="avail-slot">Any time ✓</span><span class="avail-slot">Home Visit</span></div>
-          <div class="fee-row"><div><div class="fee">₹700 / home visit</div><div class="wait" style="color:var(--sage);">Arrives in ~45 min</div></div></div>
-          <button class="action-btn sage" onclick="openBooking('Dr. Rahul Verma – Home Visit','Vet Appointment','992b98e2-5cac-47b1-9897-2183f418ae82')">🏠 Book Home Visit</button>
-        </div>
-      </div>
-
-      <div class="vet-card">
-        <div class="vet-header">
-          <div class="vet-avatar">👩‍⚕️</div>
-          <div style="flex:1;">
-            <h3>Dr. Priya Nair</h3>
-            <p>MVSc · Dermatology</p>
-            <div class="stars">★★★★★ 4.9 <span style="color:#9A8070;font-size:.7rem;">(201 reviews)</span></div>
-          </div>
-          <div><span class="badge badge-purple" style="position:static;display:inline-block;">Skin Specialist</span></div>
-        </div>
-        <div class="vet-body">
-          <div style="font-size:.78rem;color:#6A5A50;margin-bottom:.6rem;">📍 5.4 km · DermaPet Clinic, Raj Nagar</div>
-          <div class="tag-row"><span class="tag">Skin</span><span class="tag">Allergies</span><span class="tag">Coat Care</span><span class="tag">Ear</span></div>
-          <div class="vet-avail"><span class="avail-slot">10 AM ✓</span><span class="avail-slot">12 PM ✓</span><span class="avail-slot busy">3 PM Full</span></div>
-          <div class="fee-row"><div><div class="fee">₹550 / visit</div><div class="wait"><span class="queue-badge" style="background:var(--sage);">~5 min wait</span></div></div></div>
-          <button class="action-btn" onclick="openBooking('Dr. Priya Nair','Vet Appointment','e8e3d25c-9abb-4449-bde4-ea67185e6dc0')">📅 Book Appointment</button>
-        </div>
-      </div>
-
+    <div class="card-grid" id="vetCardGrid">
+      <div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">Loading vets...</div>
     </div>
+    <div id="vetNoResults" style="display:none;text-align:center;color:#9A8070;padding:2rem;">No vets found for this filter.</div>
   </div>
 </div>
 
@@ -1101,27 +988,34 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
 <div id="connect" class="page">
   <div class="section">
     <div class="section-title">Find Nearby Pet Parents</div>
-    <div class="section-sub">Connect for breeding — choose your mating preference</div>
-    <div style="background:var(--white);border-radius:16px;padding:1.3rem;margin-bottom:1.8rem;box-shadow:0 2px 14px rgba(61,43,31,.07);">
+    <div class="section-sub">Connect with other pet parents for breeding & friendship</div>
+
+    <!-- Mating venue choice -->
+    <div style="background:var(--white);border-radius:16px;padding:1.3rem;margin-bottom:1.5rem;box-shadow:0 2px 14px rgba(61,43,31,.07);">
       <h3 style="font-size:.95rem;font-weight:600;margin-bottom:.9rem;">🏠 Choose Mating Venue</h3>
       <div class="mate-choice">
         <div class="mate-option sel" id="mateOpt1" onclick="selectMateOpt('mateOpt1','mateOpt2')"><div class="mo-icon">🏥</div><h3>PawConnect Zone</h3><p>At partner vet clinic. Supervised, medical support on-site.</p><div style="margin-top:.6rem;font-size:.72rem;color:var(--sage);font-weight:500;">✅ From ₹1,200</div></div>
         <div class="mate-option" id="mateOpt2" onclick="selectMateOpt('mateOpt2','mateOpt1')"><div class="mo-icon">🏡</div><h3>Your Own Venue</h3><p>Trained assistant sent to your location.</p><div style="margin-top:.6rem;font-size:.72rem;color:var(--warm);font-weight:500;">🐾 From ₹800</div></div>
       </div>
-      <div id="matingZones"><div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;"><div style="background:var(--cream);border-radius:10px;padding:1rem;border-left:3px solid var(--sage);"><strong style="font-size:.85rem;">🏥 PawCare Clinic · Noida</strong><p style="font-size:.76rem;color:#9A8070;margin:.3rem 0;">Dr. Arora's clinic · AC room · Vet on-site</p><button class="action-btn sage" style="font-size:.76rem;padding:.4rem;" onclick="openBooking('PawCare Mating Zone','Mating')">Book Zone</button></div><div style="background:var(--cream);border-radius:10px;padding:1rem;border-left:3px solid var(--warm);"><strong style="font-size:.85rem;">🏥 PetPlus · Ghaziabad</strong><p style="font-size:.76rem;color:#9A8070;margin:.3rem 0;">CCTV · Lounge · Separate entrances</p><button class="action-btn" style="font-size:.76rem;padding:.4rem;" onclick="openBooking('PetPlus Mating Zone','Mating')">Book Zone</button></div></div></div>
-      <div id="homeVenueForm" style="display:none;"><div class="form-grid" style="max-width:480px;margin-top:.8rem;"><div class="form-group"><label>Address</label><input placeholder="Full address"></div><div class="form-group"><label>Date</label><input type="date"></div><div class="form-group full"><label>Notes</label><input placeholder="Special requirements..."></div></div><button class="action-btn" style="margin-top:.7rem;width:auto;padding:.5rem 1.3rem;" onclick="toast('✅ Trained assistant will be assigned!')">Confirm Home Visit</button></div>
     </div>
-    <div class="filter-bar"><div class="filter-chip active" onclick="filterChip(this)">All</div><div class="filter-chip" onclick="filterChip(this)">Dogs</div><div class="filter-chip" onclick="filterChip(this)">Cats</div><div class="filter-chip" onclick="filterChip(this)">Verified</div></div>
+
+    <div class="filter-bar">
+      <div class="filter-chip active" onclick="filterChip(this)">All</div>
+      <div class="filter-chip" onclick="filterChip(this)">Dogs</div>
+      <div class="filter-chip" onclick="filterChip(this)">Cats</div>
+      <div class="filter-chip" onclick="filterChip(this)">Verified</div>
+    </div>
+
     <div class="card-grid" id="mateCardGrid">
       <div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">Loading pets...</div>
     </div>
 
     <!-- Connect Request Modal -->
-    <div class="modal-overlay" id="connectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;">
-      <div class="modal" style="background:#FDF7F2;border-radius:18px;padding:1.8rem;max-width:400px;width:90%;">
+    <div id="connectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center;">
+      <div style="background:#FDF7F2;border-radius:18px;padding:1.8rem;max-width:400px;width:90%;margin:auto;margin-top:20vh;">
         <h3 style="font-family:'Playfair Display',serif;margin-bottom:1rem;">💞 Send Connect Request</h3>
         <p id="connectModalText" style="color:#6A5A50;margin-bottom:1rem;font-size:.9rem;"></p>
-        <textarea id="connectMessage" rows="3" placeholder="Hi! I'd love to connect our pets..." style="width:100%;border:1.5px solid #C8B8A8;border-radius:8px;padding:.7rem;font-family:'DM Sans',sans-serif;font-size:.85rem;color:#2C1A0E;background:#EDE0D4;"></textarea>
+        <textarea id="connectMessage" rows="3" placeholder="Hi! I'd love to connect our pets..." style="width:100%;border:1.5px solid #C8B8A8;border-radius:8px;padding:.7rem;font-family:'DM Sans',sans-serif;font-size:.85rem;box-sizing:border-box;"></textarea>
         <div style="display:flex;gap:.8rem;margin-top:1rem;">
           <button class="btn-primary" style="flex:1;" onclick="sendConnectRequest()">💞 Send Request</button>
           <button onclick="document.getElementById('connectModal').style.display='none'" style="background:none;border:1.5px solid #C8B8A8;border-radius:16px;padding:.5rem 1rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
@@ -1974,21 +1868,30 @@ function enterAs(role){
 }
 // ── PAGES ──
 function showPage(id){
+  var protected=['profile','vets','connect','marketplace','grooming','lab','pantry','trainer','creche','cab'];
+  if(protected.indexOf(id)>-1 && !window.currentUser){
+    toast('Please login first to access this feature');
+    id='verify';
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  var pg=document.getElementById(id);
+  if(!pg) return;
+  pg.classList.add('active');
   const pages=['home','verify','profile','vets','cab','connect','marketplace','grooming','lab','pantry','trainer','creche','demo','helpline'];
   const idx=pages.indexOf(id);
   const btns=document.querySelectorAll('.nav-btn');
   if(idx>=0&&idx<btns.length)btns[idx].classList.add('active');
   window.scrollTo(0,0);
-  // Show cart FAB on shopping pages
   var fab=document.getElementById('cartFab');
   if(fab){
     var shopPages=['pantry','marketplace','grooming','lab','trainer','creche'];
-    if(shopPages.includes(id)||cartItems.length>0) fab.classList.add('visible');
+    if(shopPages.indexOf(id)>-1||cartItems.length>0) fab.classList.add('visible');
     else if(cartItems.length===0) fab.classList.remove('visible');
   }
+  // Trigger data loads
+  if(id==='vets')    setTimeout(loadVets,100);
+  if(id==='connect') setTimeout(loadPetsForMating,100);
 }
 
 // ── BREEDS ──
@@ -2944,32 +2847,31 @@ function updateNavUser(name, petName){
 
 // ══ LOAD PETS FOR MATING ══
 function loadPetsForMating(){
-  var grid = document.getElementById('mateCardGrid');
-  if(grid) grid.innerHTML = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">Loading pets...</div>';
+  var grid=document.getElementById('mateCardGrid');
+  if(!grid) return;
+  grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:3rem;color:#9A8070;">Loading pets...</div>';
 
-  // Load from localStorage first (works without Supabase)
-  var localPets = [];
-  try{ localPets = JSON.parse(localStorage.getItem('pawconnect_all_pets') || '[]'); }catch(e){}
-  
-  if(localPets.length > 0){
-    renderMateCards(localPets, grid);
-    return;
-  }
+  // Step 1: Show localStorage pets immediately  
+  var localPets=[];
+  try{ localPets=JSON.parse(localStorage.getItem('pawconnect_all_pets')||'[]'); }catch(e){}
+  if(localPets.length>0) renderMateCards(localPets, grid);
 
-  // Also load from Supabase and merge
-  window.sb.from('pets').select('name, type, breed, age_label, city, gender, owner_name').then(function(res){
-    var supaPets = (res.data && !res.error) ? res.data : [];
-    // Merge with localStorage
-    var localPets2 = [];
-    try{ localPets2 = JSON.parse(localStorage.getItem('pawconnect_all_pets')||'[]'); }catch(e){}
-    var allNames = supaPets.map(function(p){ return p.name+'_'+p.owner_name; });
-    localPets2.forEach(function(lp){
-      if(allNames.indexOf(lp.name+'_'+lp.owner_name) === -1) supaPets.push(lp);
+  // Step 2: Fetch from Supabase and merge
+  window.sb.from('pets').select('*').then(function(res){
+    console.log('Supabase pets:', res);
+    var dbPets=(res.data && !res.error) ? res.data : [];
+    // Merge local pets not in DB
+    var myId=window.currentUser ? window.currentUser.id : null;
+    localPets.forEach(function(lp){
+      if(lp.user_id!==myId){
+        var exists=dbPets.some(function(dp){return dp.name===lp.name && dp.owner_name===lp.owner_name;});
+        if(!exists) dbPets.push(lp);
+      }
     });
-    if(supaPets.length > 0){
-      renderMateCards(supaPets, grid);
-    } else {
-      grid.innerHTML = '<div style="text-align:center;padding:2rem;grid-column:1/-1;"><div style="font-size:3rem;">🐾</div><p style="color:#6A5A50;font-weight:600;">No pets listed yet!</p><p style="color:#9A8070;font-size:.85rem;">Create your pet profile first!</p></div>';
+    if(dbPets.length>0){
+      renderMateCards(dbPets, grid);
+    } else if(localPets.length===0){
+      grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:3rem;"><div style="font-size:3rem;">🐾</div><p style="color:#6A5A50;font-weight:600;margin:.5rem 0;">No pets listed yet</p><p style="color:#9A8070;font-size:.85rem;">Save your pet profile to appear here!</p></div>';
     }
   });
 }
@@ -3037,20 +2939,28 @@ function sendConnectRequest(){
 // ══ LOAD REAL VETS ══
 function loadVets(){
   var grid = document.getElementById('vetCardGrid');
-  if(grid) grid.innerHTML = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">Loading vets...</div>';
-  // No filter - show ALL vets including newly registered ones
+  if(!grid) return;
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:#9A8070;">Loading vets...</div>';
+
+  // Step 1: Show localStorage vets immediately
+  var localVets=[];
+  try{ localVets=JSON.parse(localStorage.getItem('pawconnect_all_vets')||'[]'); }catch(e){}
+  if(localVets.length>0) renderVetCards(localVets, grid);
+
+  // Step 2: Fetch from Supabase and merge
   window.sb.from('vets').select('*').then(function(res){
-    console.log('Vets query result:', JSON.stringify(res));
-    if(!grid) return;
-    if(res.error){
-      grid.innerHTML = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">Error: ' + res.error.message + '</div>';
-      return;
+    console.log('Supabase vets:', res);
+    var dbVets = (res.data && !res.error) ? res.data : [];
+    // Merge: add local vets not in DB
+    var dbEmails = dbVets.map(function(v){return (v.email||'').toLowerCase();});
+    localVets.forEach(function(lv){
+      if(dbEmails.indexOf((lv.email||'').toLowerCase())===-1) dbVets.push(lv);
+    });
+    if(dbVets.length>0){
+      renderVetCards(dbVets, grid);
+    } else if(localVets.length===0){
+      grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:3rem;"><div style="font-size:3rem;">🩺</div><p style="color:#6A5A50;font-weight:600;margin:.5rem 0;">No vets registered yet</p></div>';
     }
-    if(!res.data || res.data.length === 0){
-      grid.innerHTML = '<div style="text-align:center;padding:2rem;grid-column:1/-1;"><div style="font-size:3rem;">🩺</div><p style="color:#6A5A50;font-weight:600;margin:.5rem 0;">No vets registered yet</p><p style="color:#9A8070;font-size:.85rem;">Be the first to register your clinic!</p></div>';
-      return;
-    }
-    renderVetCards(res.data, grid);
   });
 }
 
