@@ -1068,7 +1068,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
         <button class="send-btn" onclick="sendOTP()">Send OTP</button>
       </div>
       <div id="otpSection" style="display:none;margin-top:1.1rem;">
-        <p style="font-size:.8rem;color:#6A5A50;margin-bottom:.7rem;">Enter 6-digit OTP (demo: 123456)</p>
+        <p style="font-size:.8rem;color:#6A5A50;margin-bottom:.7rem;">Enter OTP sent to your number</p><p style="font-size:.75rem;color:#8B4513;margin-bottom:.5rem;font-weight:600;">Test OTP: 123456 (must send OTP first each time)</p>
         <div class="otp-input-row">
           <input class="otp-box" maxlength="1" oninput="otpNext(this,0)" id="o0">
           <input class="otp-box" maxlength="1" oninput="otpNext(this,1)" id="o1">
@@ -1856,7 +1856,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
       <div id="ddashboard" class="page active">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.3rem;flex-wrap:wrap;gap:.7rem;">
           <div>
-            <div class="page-title">Good morning, Dr. Arora 👋</div>
+            <div class="page-title" id="vetGreeting">Good morning, Doctor 👋</div>
             <div class="page-sub" style="margin-bottom:0">Sunday, 22 Feb 2026 · PawCare Clinic, Sector 62 Noida</div>
           </div>
           <div style="display:flex;gap:.5rem;">
@@ -2564,8 +2564,26 @@ function dDoRegister(){
 
   toast('Creating your account...');
 
-  // Create auth account
-  window.sb.auth.signUp({ email: email, password: password }).then(function(res){
+  // First try to sign in (account might exist already)
+  // Then sign up if not exists
+  window.sb.auth.signInWithPassword({ email: email, password: password }).then(function(signInRes){
+    var existingUser = (!signInRes.error && signInRes.data && signInRes.data.user) ? signInRes.data.user : null;
+    
+    if(existingUser){
+      // Account exists - check if already in vets table
+      window.sb.from('vets').select('*').eq('auth_id', existingUser.id).then(function(vCheck){
+        if(vCheck.data && vCheck.data.length > 0){
+          toast('❌ This email already has a vet account. Please use Login instead.');
+        } else {
+          // Has auth but no vet profile - create vet profile
+          continueVetRegistration(existingUser, name, qual, vci, email, phone, clinic, city, fee, spec);
+        }
+      });
+      return;
+    }
+    
+    // Account does not exist - create new
+    window.sb.auth.signUp({ email: email, password: password }).then(function(res){
     if(res.error){ 
       toast('Error: ' + (res.error.message || 'Signup failed'));
       console.log('Signup error:', JSON.stringify(res.error));
@@ -2576,8 +2594,14 @@ function dDoRegister(){
     var userId = user ? user.id : null;
     
     if(!userId){
-      toast('Error: Could not create account. Try a different email.');
-      console.log('No user returned:', JSON.stringify(res));
+      // Supabase sometimes needs email confirmation - try signing in
+      window.sb.auth.signInWithPassword({ email: email, password: password }).then(function(r2){
+        if(!r2.error && r2.data && r2.data.user){
+          continueVetRegistration(r2.data.user, name, qual, vci, email, phone, clinic, city, fee, spec);
+        } else {
+          toast('Account created! Please check email to confirm, then login.');
+        }
+      });
       return;
     }
 
@@ -2621,16 +2645,64 @@ function dDoRegister(){
       window.currentUser = user;
       localStorage.setItem('pawconnect_vet', JSON.stringify(vetData));
 
+      var firstName = name.replace('Dr.','').trim().split(' ')[0];
       var greeting = document.getElementById('vetGreeting');
-      if(greeting) greeting.textContent = 'Welcome, ' + name + ' 👋';
+      if(greeting) greeting.textContent = 'Welcome, Dr. ' + firstName + ' 👋';
       var clinicLine = document.getElementById('vetClinicLine');
       if(clinicLine) clinicLine.textContent = clinic + ', ' + city;
 
       document.getElementById('doctorLogin').style.display = 'none';
       document.getElementById('doctorApp').style.display   = 'flex';
       dSp('dashboard');
-      toast('🎉 Welcome to PawConnect, ' + name + '!');
+      toast('🎉 Welcome to PawConnect, Dr. ' + firstName + '!');
     });
+  }); // signUp
+  }); // signIn check
+}
+
+function continueVetRegistration(user, name, qual, vci, email, phone, clinic, city, fee, spec){
+  var userId    = user.id;
+  var firstName = name.replace('Dr.','').trim().split(' ')[0];
+
+  window.sb.from('vets').insert({
+    auth_id:        userId,
+    name:           name,
+    qualification:  qual,
+    vci_reg_no:     vci,
+    email:          email,
+    phone:          phone,
+    clinic_name:    clinic,
+    city:           city,
+    fee:            parseInt(fee) || 400,
+    specialization: spec,
+    is_verified:    false,
+    is_active:      true,
+    rating:         5.0,
+    experience:     1
+  }).then(function(vres){
+    if(vres.error) console.log('Vet insert error:', JSON.stringify(vres.error));
+
+    var vetData = {
+      id: userId, auth_id: userId,
+      name: name, clinic_name: clinic,
+      city: city, email: email,
+      fee: parseInt(fee)||400,
+      specialization: spec,
+      vci_reg_no: vci
+    };
+    window.currentVet  = vetData;
+    window.currentUser = user;
+    localStorage.setItem('pawconnect_vet', JSON.stringify(vetData));
+
+    var greeting = document.getElementById('vetGreeting');
+    if(greeting) greeting.textContent = 'Welcome, Dr. ' + firstName + ' 👋';
+    var clinicLine = document.getElementById('vetClinicLine');
+    if(clinicLine) clinicLine.textContent = clinic + ', ' + city;
+
+    document.getElementById('doctorLogin').style.display = 'none';
+    document.getElementById('doctorApp').style.display   = 'flex';
+    dSp('dashboard');
+    toast('🎉 Welcome to PawConnect, Dr. ' + firstName + '!');
   });
 }
 function dDoLogout(){
