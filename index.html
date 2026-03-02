@@ -5,283 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PawConnect — India's #1 Pet Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/* SUPABASE EMBEDDED — No internet/CDN needed */
-/* =====================================================
-   SUPABASE LIGHT CLIENT — No CDN needed
-   Works directly with Supabase REST API using fetch()
-   Covers: select, insert, update, delete, auth (OTP)
-   ===================================================== */
-(function(window) {
-  function createClient(url, key) {
-    const headers = {
-      'apikey': key,
-      'Authorization': 'Bearer ' + key,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    };
-
-    // ── AUTH ──
-    const auth = {
-      _session: null,
-
-      async signInWithOtp({ phone }) {
-        try {
-          const r = await fetch(url + '/auth/v1/otp', {
-            method: 'POST',
-            headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: String(phone), channel: 'sms' })
-          });
-          const data = await r.json();
-          if (!r.ok) return { error: data };
-          return { data, error: null };
-        } catch(e) { return { error: { message: e.message } }; }
-      },
-
-      async verifyOtp({ phone, token, type }) {
-        try {
-          const r = await fetch(url + '/auth/v1/verify', {
-            method: 'POST',
-            headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, token: String(token), type: type || 'sms' })
-          });
-          const data = await r.json();
-          if (!r.ok) return { data: null, error: data };
-          auth._session = data;
-          if (data.access_token) {
-            localStorage.setItem('pawconnect_session', JSON.stringify(data));
-            headers['Authorization'] = 'Bearer ' + data.access_token;
-          }
-          return { data, error: null };
-        } catch(e) { return { data: null, error: { message: e.message } }; }
-      },
-
-      async signInWithPassword({ email, password }) {
-        try {
-          const r = await fetch(url + '/auth/v1/token?grant_type=password', {
-            method: 'POST',
-            headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-          });
-          const data = await r.json();
-          if (!r.ok) return { data: null, error: data };
-          auth._session = data;
-          if (data.access_token) {
-            localStorage.setItem('pawconnect_session', JSON.stringify(data));
-            headers['Authorization'] = 'Bearer ' + data.access_token;
-          }
-          return { data: { user: data.user, session: data }, error: null };
-        } catch(e) { return { data: null, error: { message: e.message } }; }
-      },
-
-      async signUp({ email, password }) {
-        try {
-          const r = await fetch(url + '/auth/v1/signup', {
-            method: 'POST',
-            headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-          });
-          const data = await r.json();
-          if (!r.ok) return { data: null, error: data };
-          return { data: { user: data.user || data }, error: null };
-        } catch(e) { return { data: null, error: { message: e.message } }; }
-      },
-
-      async signOut() {
-        localStorage.removeItem('pawconnect_session');
-        headers['Authorization'] = 'Bearer ' + key;
-        auth._session = null;
-        if (auth._listeners) auth._listeners.forEach(fn => fn('SIGNED_OUT', null));
-        return { error: null };
-      },
-
-      async getSession() {
-        const stored = localStorage.getItem('pawconnect_session');
-        if (stored) {
-          try {
-            const session = JSON.parse(stored);
-            auth._session = session;
-            if (session.access_token) headers['Authorization'] = 'Bearer ' + session.access_token;
-            return { data: { session }, error: null };
-          } catch(e) {}
-        }
-        return { data: { session: null }, error: null };
-      },
-
-      _listeners: [],
-      onAuthStateChange(fn) {
-        auth._listeners.push(fn);
-        return { data: { subscription: { unsubscribe: () => {} } } };
-      }
-    };
-
-    // ── QUERY BUILDER ──
-    function QueryBuilder(table) {
-      this._table   = table;
-      this._filters = [];
-      this._select  = '*';
-      this._order   = null;
-      this._limit   = null;
-      this._single  = false;
-      this._count   = null;
-      this._method  = 'GET';
-      this._body    = null;
-    }
-
-    QueryBuilder.prototype.select = function(cols, opts) {
-      this._select = cols || '*';
-      if (opts && opts.count) this._count = opts.count;
-      if (opts && opts.head)  this._head  = opts.head;
-      return this;
-    };
-
-    QueryBuilder.prototype.insert = function(data) {
-      this._method = 'POST';
-      this._body   = JSON.stringify(Array.isArray(data) ? data : [data]);
-      return this;
-    };
-
-    QueryBuilder.prototype.update = function(data) {
-      this._method = 'PATCH';
-      this._body   = JSON.stringify(data);
-      return this;
-    };
-
-    QueryBuilder.prototype.upsert = function(data) {
-      this._method  = 'POST';
-      this._body    = JSON.stringify(Array.isArray(data) ? data : [data]);
-      this._upsert  = true;
-      return this;
-    };
-
-    QueryBuilder.prototype.delete = function() {
-      this._method = 'DELETE';
-      return this;
-    };
-
-    QueryBuilder.prototype.eq = function(col, val) {
-      this._filters.push(col + '=eq.' + val);
-      return this;
-    };
-
-    QueryBuilder.prototype.neq = function(col, val) {
-      this._filters.push(col + '=neq.' + val);
-      return this;
-    };
-
-    QueryBuilder.prototype.lte = function(col, val) {
-      this._filters.push(col + '=lte.' + val);
-      return this;
-    };
-
-    QueryBuilder.prototype.gte = function(col, val) {
-      this._filters.push(col + '=gte.' + val);
-      return this;
-    };
-
-    QueryBuilder.prototype.ilike = function(col, val) {
-      this._filters.push(col + '=ilike.' + val);
-      return this;
-    };
-
-    QueryBuilder.prototype.order = function(col, opts) {
-      this._order = col + (opts && opts.ascending === false ? '.desc' : '.asc');
-      return this;
-    };
-
-    QueryBuilder.prototype.limit = function(n) {
-      this._limit = n;
-      return this;
-    };
-
-    QueryBuilder.prototype.single = function() {
-      this._single = true;
-      return this;
-    };
-
-    QueryBuilder.prototype.then = async function(resolve, reject) {
-      try {
-        let endpoint = url + '/rest/v1/' + this._table + '?select=' + encodeURIComponent(this._select);
-        this._filters.forEach(f => { endpoint += '&' + f; });
-        if (this._order) endpoint += '&order=' + this._order;
-        if (this._limit) endpoint += '&limit=' + this._limit;
-
-        const h = { ...headers };
-        if (this._single) h['Accept'] = 'application/vnd.pgrst.object+json';
-        if (this._count)  h['Prefer'] = 'count=' + this._count;
-        if (this._upsert) h['Prefer'] = 'resolution=merge-duplicates,return=representation';
-
-        const opts = { method: this._method, headers: h };
-        if (this._body) opts.body = this._body;
-        if (this._head) opts.method = 'HEAD';
-
-        const r = await fetch(endpoint, opts);
-
-        if (this._count && this._head) {
-          const countHeader = r.headers.get('content-range');
-          const count = countHeader ? parseInt(countHeader.split('/')[1]) : 0;
-          return resolve({ count, error: null });
-        }
-
-        const text = await r.text();
-        const data = text ? JSON.parse(text) : null;
-
-        if (!r.ok) return resolve({ data: null, error: data, count: null });
-        return resolve({ data, error: null, count: null });
-      } catch(e) {
-        return resolve({ data: null, error: { message: e.message }, count: null });
-      }
-    };
-
-    // ── STORAGE ──
-    const storage = {
-      from(bucket) {
-        return {
-          async upload(path, file, opts) {
-            try {
-              const fd = new FormData();
-              fd.append('', file);
-              const method = opts && opts.upsert ? 'PUT' : 'POST';
-              const r = await fetch(url + '/storage/v1/object/' + bucket + '/' + path, {
-                method,
-                headers: { 'apikey': key, 'Authorization': headers['Authorization'] },
-                body: file
-              });
-              const data = await r.json();
-              return r.ok ? { data, error: null } : { data: null, error: data };
-            } catch(e) { return { data: null, error: { message: e.message } }; }
-          },
-          getPublicUrl(path) {
-            return { data: { publicUrl: url + '/storage/v1/object/public/' + bucket + '/' + path } };
-          }
-        };
-      }
-    };
-
-    // ── REALTIME (stub) ──
-    const channel = () => ({
-      on: function() { return this; },
-      subscribe: function() { return this; }
-    });
-
-    return {
-      auth,
-      storage,
-      channel,
-      from(table) { return new QueryBuilder(table); }
-    };
-  }
-
-  window.supabase = { createClient };
-})(window);
-
-const SUPABASE_URL = 'https://nupotfksmpdrsifjsyww.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51cG90ZmtzbXBkcnNpZmpzeXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4MTYwMjgsImV4cCI6MjA4NzM5MjAyOH0.k_UYww_zjqtkWNkorf-bo9iTIoN1FygXlhn0TLtkdDg';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL     = 'https://nupotfksmpdrsifjsyww.supabase.co';
+const SUPABASE_ANON_KEY= 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51cG90ZmtzbXBkcnNpZmpzeXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4MTYwMjgsImV4cCI6MjA4NzM5MjAyOH0.k_UYww_zjqtkWNkorf-bo9iTIoN1FygXlhn0TLtkdDg';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.sb = sb;
-console.log('✅ sb ready:', typeof sb);
-
-// Firebase disabled - using Supabase OTP
+console.log('✅ Supabase official client ready');
+// Firebase disabled - using custom OTP
 </script>
 
 <style>
@@ -2582,18 +2313,21 @@ function continueVetRegistration(user, name, qual, vci, email, phone, clinic, ci
   var userId    = user.id;
   var firstName = name.replace('Dr.','').trim().split(' ')[0];
 
-  window.sb.from('vets').insert({
-    auth_id:        userId,
-    name:           name,
-    qualification:  qual,
-    vci_reg_no:     vci,
-    email:          email,
-    clinic_name:    clinic,
-    city:           city,
-    fee:            parseInt(fee) || 400,
-    specialization: spec,
-    is_active:      true
-  }).then(function(vres){
+  // Insert vet - minimal columns to avoid schema mismatch
+  var vetInsertData = {
+    name:        name,
+    email:       email,
+    clinic_name: clinic,
+    city:        city
+  };
+  // Add optional columns if they might exist
+  try{ vetInsertData.qualification  = qual; }catch(e){}
+  try{ vetInsertData.vci_reg_no     = vci; }catch(e){}
+  try{ vetInsertData.fee            = parseInt(fee)||400; }catch(e){}
+  try{ vetInsertData.specialization = spec; }catch(e){}
+  try{ vetInsertData.is_active      = true; }catch(e){}
+
+  window.sb.from('vets').insert(vetInsertData).then(function(vres){
     console.log('Vet insert result:', JSON.stringify(vres));
     if(vres.error) console.log('Vet insert error:', JSON.stringify(vres.error));
 
@@ -2843,15 +2577,19 @@ function doSavePet(petData, name){
   toast('✅ ' + name + ' profile saved! 🐾');
   updateNavUser(ownerName, name);
 
-  // Try Supabase in background (best effort)
-  var sbData = Object.assign({}, petData);
-  delete sbData.id; // Let Supabase generate its own ID
-  window.sb.from('pets').select('id').eq('user_id', window.currentUser.id).then(function(res){
-    if(res.data && res.data.length > 0){
-      window.sb.from('pets').update(sbData).eq('id', res.data[0].id).then(function(){});
-    } else {
-      window.sb.from('pets').insert(sbData).then(function(){});
-    }
+  // Save to Supabase in background - minimal safe columns
+  var sbData = {
+    name:       petData.name,
+    type:       petData.type,
+    breed:      petData.breed,
+    age_label:  petData.age_label,
+    city:       petData.city,
+    gender:     petData.gender,
+    owner_name: petData.owner_name
+  };
+  window.sb.from('pets').insert(sbData).then(function(r){
+    if(r.error) console.log('Pet Supabase save (non-critical):', r.error.message);
+    else console.log('✅ Pet saved to Supabase');
   });
 }
 
@@ -3218,14 +2956,21 @@ function loadPetsForMating(){
     return;
   }
 
-  // Fallback to Supabase
-  window.sb.from('pets').select('*').then(function(res){
-    if(!grid) return;
-    if(res.error || !res.data || res.data.length === 0){
-      grid.innerHTML = '<div style="text-align:center;padding:2rem;grid-column:1/-1;"><div style="font-size:3rem;">🐾</div><p style="color:#6A5A50;font-weight:600;">No pets listed yet!</p></div>';
-      return;
+  // Also load from Supabase and merge
+  window.sb.from('pets').select('name, type, breed, age_label, city, gender, owner_name').then(function(res){
+    var supaPets = (res.data && !res.error) ? res.data : [];
+    // Merge with localStorage
+    var localPets2 = [];
+    try{ localPets2 = JSON.parse(localStorage.getItem('pawconnect_all_pets')||'[]'); }catch(e){}
+    var allNames = supaPets.map(function(p){ return p.name+'_'+p.owner_name; });
+    localPets2.forEach(function(lp){
+      if(allNames.indexOf(lp.name+'_'+lp.owner_name) === -1) supaPets.push(lp);
+    });
+    if(supaPets.length > 0){
+      renderMateCards(supaPets, grid);
+    } else {
+      grid.innerHTML = '<div style="text-align:center;padding:2rem;grid-column:1/-1;"><div style="font-size:3rem;">🐾</div><p style="color:#6A5A50;font-weight:600;">No pets listed yet!</p><p style="color:#9A8070;font-size:.85rem;">Create your pet profile first!</p></div>';
     }
-    renderMateCards(res.data, grid);
   });
 }
 
