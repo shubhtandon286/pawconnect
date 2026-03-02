@@ -2036,11 +2036,35 @@ function confirmBooking(){
     booked_at:        new Date().toISOString()
   };
 
-  // Save to localStorage
+  // Save to localStorage bookings
   var myBookings = [];
   try{ myBookings = JSON.parse(localStorage.getItem('pawconnect_bookings')||'[]'); }catch(e){}
   myBookings.unshift(booking);
   localStorage.setItem('pawconnect_bookings', JSON.stringify(myBookings));
+
+  // Also add to vet queue so vet sees this booking
+  var vetEmail = '';
+  try{
+    var allVets = JSON.parse(localStorage.getItem('pawconnect_all_vets')||'[]');
+    var matchVet = allVets.find(function(v){ return v.name && bookTarget && v.name.indexOf(bookTarget.replace('Dr.','').trim())>-1; });
+    if(matchVet) vetEmail = matchVet.email || '';
+  }catch(e){}
+  var token = Math.floor(Math.random()*90)+10;
+  var queueItem = {
+    id:         'q_' + Date.now(),
+    token:      token,
+    pet_name:   booking.pet_name,
+    owner_name: booking.owner_name,
+    pet_type:   booking.pet_type || '',
+    reason:     booking.reason,
+    status:     'waiting',
+    date:       date,
+    vet_email:  vetEmail
+  };
+  var vetQueue = [];
+  try{ vetQueue = JSON.parse(localStorage.getItem('pawconnect_vet_queue')||'[]'); }catch(e){}
+  vetQueue.push(queueItem);
+  localStorage.setItem('pawconnect_vet_queue', JSON.stringify(vetQueue));
 
   // Try Supabase in background — ignore FK errors
   var sbBooking = {
@@ -2337,26 +2361,47 @@ const qPts=[
   {tok:'#07',nm:'Buddy',pt:'Poodle · Anita R.',rs:'Post-op 🚨 · Est. 25 min'}
 ];
 let qPos=0;
+function getVetQueue(){
+  var queue = [];
+  try{ queue = JSON.parse(localStorage.getItem('pawconnect_vet_queue')||'[]'); }catch(e){}
+  return queue;
+}
+function saveVetQueue(q){
+  localStorage.setItem('pawconnect_vet_queue', JSON.stringify(q));
+}
+
 function dCallNext(){
-  if(!window.currentVet){ toast('Not logged in'); return; }
-  var today = new Date().toISOString().split('T')[0];
-  window.sb.from('vet_queue').select('*').eq('vet_id', window.currentVet.id).eq('queue_date', today).eq('status','waiting').order('token_number',{ascending:true}).limit(1).then(function(res){
-    if(res.error || !res.data || res.data.length === 0){ toast('No more patients in queue!'); return; }
-    var p = res.data[0];
-    document.getElementById('dcurTok').textContent = '#' + p.token_number;
-    document.getElementById('dcurNm').textContent  = p.pet_name;
-    document.getElementById('dcurPt').textContent  = (p.pet_type||'') + ' · ' + (p.owner_name||'');
-    document.getElementById('dcurRs').textContent  = p.reason || '';
-    document.getElementById('dqSumHd').textContent = '📝 Visit Summary — ' + p.pet_name;
-    window.sb.from('vet_queue').update({status:'in_progress'}).eq('id', p.id).then(function(){});
-    window.sb.from('vet_queue').select('id').eq('vet_id', window.currentVet.id).eq('queue_date', today).eq('status','waiting').then(function(qres){
-      var el = document.getElementById('ddqn');
-      if(el) el.textContent = qres.data ? qres.data.length : 0;
+  var queue   = getVetQueue();
+  var waiting = queue.filter(function(p){ return p.status==='waiting'; });
+  if(waiting.length === 0){ toast('No more patients in queue!'); return; }
+
+  // Mark current as done
+  if(window._currentQueueItem){
+    queue = queue.map(function(p){
+      if(p.id === window._currentQueueItem.id) p.status = 'done';
+      return p;
     });
-    window._currentQueueItem = p;
-    toast('📢 Calling ' + p.pet_name + ' · Token #' + p.token_number);
-    setTimeout(loadQueue, 1000);
-  });
+  }
+
+  // Get next waiting
+  var next = waiting[0];
+  next.status = 'in_progress';
+  queue = queue.map(function(p){ return p.id===next.id ? next : p; });
+  saveVetQueue(queue);
+  window._currentQueueItem = next;
+
+  document.getElementById('dcurTok').textContent = '#' + next.token;
+  document.getElementById('dcurNm').textContent  = next.pet_name;
+  document.getElementById('dcurPt').textContent  = (next.pet_type||'') + ' · ' + (next.owner_name||'');
+  document.getElementById('dcurRs').textContent  = next.reason || '';
+  document.getElementById('dqSumHd').textContent = '📝 Visit Summary — ' + next.pet_name;
+
+  var remaining = queue.filter(function(p){ return p.status==='waiting'; }).length;
+  var el = document.getElementById('ddqn');
+  if(el) el.textContent = remaining;
+
+  toast('📢 Calling ' + next.pet_name + ' · Token #' + next.token);
+  loadQueue();
 }
 function dAddWalkin(){
   const v=document.getElementById('dwiIn').value.trim();
@@ -2567,44 +2612,51 @@ function loadVetDashboard(){
 
 function loadQueue(){
   if(!window.currentVet) return;
+  var list = document.getElementById('dqList');
+  if(!list) return;
+
+  var queue = getVetQueue();
   var today = new Date().toISOString().split('T')[0];
+  // Filter today's patients for this vet
+  var todayQ = queue.filter(function(p){ 
+    return (!p.vet_email || p.vet_email === window.currentVet.email) &&
+           (!p.date || p.date === today);
+  });
 
-  window.sb.from('vet_queue')
-    .select('*')
-    .eq('vet_id', window.currentVet.id)
-    .eq('queue_date', today)
-    .order('token_number', { ascending: true })
-    .then(function(res){
-      var list = document.getElementById('dqList');
-      var emptyMsg = document.getElementById('qEmptyMsg');
-      if(!list) return;
+  if(todayQ.length === 0){
+    list.innerHTML = '<div style="color:#6A8FAF;font-size:.82rem;padding:1rem;text-align:center;">No patients in queue today</div>';
+    var el = document.getElementById('ddqn'); if(el) el.textContent = '0';
+    return;
+  }
 
-      if(res.error || !res.data || res.data.length === 0){
-        list.innerHTML = '<div style="color:#6A8FAF;font-size:.82rem;padding:1rem;text-align:center;" id="qEmptyMsg">No patients in queue today</div>';
-        return;
-      }
+  var waiting = todayQ.filter(function(p){ return p.status==='waiting'; }).length;
+  var el = document.getElementById('ddqn'); if(el) el.textContent = waiting;
 
-      // Update waiting count
-      var waiting = res.data.filter(function(p){ return p.status === 'waiting'; }).length;
-      var el = document.getElementById('ddqn');
-      if(el) el.textContent = waiting;
+  var html = '';
+  todayQ.forEach(function(p){
+    var tokClass = p.status==='done' ? 'd' : p.status==='in_progress' ? 'a' : 'w';
+    var stText   = p.status==='done' ? 'Done ✓' : p.status==='in_progress' ? 'In Progress' : 'Waiting';
+    var tokText  = p.status==='done' ? '✓' : (p.token||'?');
+    var aqClass  = p.status==='in_progress' ? ' aq' : '';
+    html += '<div class="q-item'+aqClass+'">' +
+              '<div class="q-tok '+tokClass+'">'+tokText+'</div>' +
+              '<div class="qi"><h5>'+p.pet_name+' · '+(p.owner_name||'')+'</h5>' +
+              '<p>'+(p.pet_type||'')+' · '+(p.reason||'')+'</p></div>' +
+              '<span class="q-st '+tokClass+'">'+stText+'</span>' +
+            '</div>';
+  });
+  list.innerHTML = html;
 
-      // Build queue list
-      var html = '';
-      res.data.forEach(function(p){
-        var tokClass = p.status === 'done' ? 'd' : p.status === 'in_progress' ? 'a' : p.status === 'urgent' ? 'u' : 'w';
-        var stText   = p.status === 'done' ? 'Done' : p.status === 'in_progress' ? 'In Progress' : p.status === 'urgent' ? 'Urgent' : 'Waiting';
-        var tokText  = p.status === 'done' ? '✓' : p.token_number;
-        var aqClass  = p.status === 'in_progress' ? ' aq' : '';
-        html += '<div class="q-item' + aqClass + '">' +
-                  '<div class="q-tok ' + tokClass + '">' + tokText + '</div>' +
-                  '<div class="qi"><h5>' + p.pet_name + ' (' + (p.owner_name||'') + ')</h5>' +
-                  '<p>' + (p.pet_type||'') + ' · ' + (p.reason||'') + '</p></div>' +
-                  '<span class="q-st ' + tokClass + '">' + stText + '</span>' +
-                '</div>';
-      });
-      list.innerHTML = html;
-    });
+  // Auto-show first in_progress or first waiting as current
+  var current = todayQ.find(function(p){ return p.status==='in_progress'; }) ||
+                todayQ.find(function(p){ return p.status==='waiting'; });
+  if(current && !window._currentQueueItem){
+    window._currentQueueItem = current;
+    document.getElementById('dcurTok').textContent = '#' + (current.token||'01');
+    document.getElementById('dcurNm').textContent  = current.pet_name;
+    document.getElementById('dcurPt').textContent  = (current.pet_type||'') + ' · ' + (current.owner_name||'');
+    document.getElementById('dcurRs').textContent  = current.reason || '';
+  }
 }
 
 function backToLanding(){
