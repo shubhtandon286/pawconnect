@@ -2322,7 +2322,13 @@ function verifyOTP(){
       document.getElementById('o0').focus();
       return; 
     }
-    var uid = 'pet_' + window._pendingPhone.replace(/[^0-9]/g,'');
+    // Reuse existing UUID for this phone if available, else generate new one
+    var phoneKey = 'pawconnect_uid_' + window._pendingPhone.replace(/[^0-9]/g,'');
+    var existingUid = localStorage.getItem(phoneKey);
+    var uid = existingUid || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+      var r = Math.random()*16|0, v = c=='x' ? r : (r&0x3|0x8);
+      return v.toString(16);
+    });
     var user = { id: uid, phone: window._pendingPhone };
     window.currentUser = user;
     localStorage.setItem('pawconnect_session', JSON.stringify({
@@ -2331,6 +2337,9 @@ function verifyOTP(){
       expires_at: Date.now()/1000 + 86400
     }));
     // Save user to DB silently
+    // Store phone->uuid mapping in localStorage for consistent login
+    var phoneKey = 'pawconnect_uid_' + window._pendingPhone.replace(/[^0-9]/g,'');
+    localStorage.setItem(phoneKey, uid);
     window.sb.from('users').upsert({ id: uid, phone: window._pendingPhone }, { onConflict: 'id' }).then(function(){});
     toast('🎉 Welcome to PawConnect!');
     document.getElementById('landing').style.display = 'none';
@@ -2486,35 +2495,39 @@ function dDoLogin(){
 
   toast('Authenticating...');
 
-  window.sb.auth.signInWithPassword({ email: email, password: password }).then(function(res){
-    if(res.error){ toast('❌ ' + res.error.message); return; }
+  // Check local credentials first
+  var vetCredKey = 'pawconnect_vet_cred_' + email.toLowerCase().replace(/[^a-z0-9]/g,'');
+  var storedCred = localStorage.getItem(vetCredKey);
+  
+  if(storedCred){
+    try{
+      var cred = JSON.parse(storedCred);
+      if(cred.password !== password){ toast('❌ Wrong password'); return; }
+      if(cred.vci && cred.vci !== vci){ toast('❌ VCI number does not match'); return; }
+      // Load vet profile from DB
+      window.sb.from('vets').select('*').eq('auth_id', cred.id).then(function(vres){
+        var vetData = (vres.data && vres.data.length > 0) ? vres.data[0] : {
+          id: cred.id, auth_id: cred.id, email: email, name: email.split('@')[0]
+        };
+        window.currentVet  = vetData;
+        window.currentUser = { id: cred.id, email: email };
+        localStorage.setItem('pawconnect_vet', JSON.stringify(vetData));
+        var name = vetData.name || email;
+        var firstName = name.replace('Dr.','').trim().split(' ')[0];
+        var greeting = document.getElementById('vetGreeting');
+        if(greeting) greeting.textContent = 'Welcome back, Dr. ' + firstName + ' 👋';
+        var clinicLine = document.getElementById('vetClinicLine');
+        if(clinicLine) clinicLine.textContent = (vetData.clinic_name||'') + ', ' + (vetData.city||'');
+        document.getElementById('doctorLogin').style.display = 'none';
+        document.getElementById('doctorApp').style.display   = 'flex';
+        dSp('dashboard');
+        toast('✅ Welcome Dr. ' + firstName + '!');
+      });
+      return;
+    }catch(e){}
+  }
 
-    var userId = res.data.user.id;
-
-    window.sb.from('vets').select('*').eq('auth_id', userId).eq('vci_reg_no', vci).then(function(vres){
-      if(vres.error || !vres.data || vres.data.length === 0){
-        toast('❌ VCI number does not match');
-        window.sb.auth.signOut();
-        return;
-      }
-      window.currentVet  = vres.data[0];
-      window.currentUser = res.data.user;
-
-      // Cache vet data for faster restore
-      localStorage.setItem('pawconnect_vet', JSON.stringify(window.currentVet));
-
-      var greeting = document.getElementById('vetGreeting');
-      if(greeting) greeting.textContent = 'Good morning, Dr. ' + window.currentVet.name.split(' ').pop() + ' 👋';
-      var clinicLine = document.getElementById('vetClinicLine');
-      if(clinicLine) clinicLine.textContent = (window.currentVet.clinic_name||'') + ', ' + (window.currentVet.city||'');
-
-      document.getElementById('doctorLogin').style.display = 'none';
-      document.getElementById('doctorApp').style.display   = 'flex';
-      dSp('dashboard');
-      toast('✅ Welcome Dr. ' + window.currentVet.name + '!');
-      loadVetDashboard();
-    });
-  });
+  toast('❌ No account found. Please Register first.');
 }
 function dDoRegister(){
   var name     = document.getElementById('drName').value.trim();
@@ -2535,43 +2548,30 @@ function dDoRegister(){
 
   toast('Creating your account...');
 
-  // Try signup directly
-  window.sb.auth.signUp({ email: email, password: password }).then(function(res){
-    console.log('Signup response:', JSON.stringify(res));
-    
-    if(res.error){
-      // If already registered, try login instead
-      if(res.error.message && res.error.message.toLowerCase().indexOf('already') > -1){
-        toast('Email already registered. Trying to login...');
-        window.sb.auth.signInWithPassword({ email: email, password: password }).then(function(loginRes){
-          if(loginRes.error){ toast('❌ Wrong password for existing account.'); return; }
-          continueVetRegistration(loginRes.data.user, name, qual, vci, email, phone, clinic, city, fee, spec);
-        });
+  // Generate a proper UUID for this vet
+  var vetUid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+    var r = Math.random()*16|0, v = c=='x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+
+  // Store credentials locally for login (bypasses Supabase email auth)
+  var vetCredKey = 'pawconnect_vet_cred_' + email.toLowerCase().replace(/[^a-z0-9]/g,'');
+  var existingCred = localStorage.getItem(vetCredKey);
+  if(existingCred){
+    try{
+      var cred = JSON.parse(existingCred);
+      if(cred.password !== password){
+        toast('❌ Email already registered. Use Login tab with your password.');
         return;
       }
-      var errMsg = res.error.message || res.error.msg || JSON.stringify(res.error);
-      toast('❌ ' + errMsg);
-      return;
-    }
-    
-    var user   = res.data && res.data.user ? res.data.user : null;
-    
-    if(!user || !user.id){
-      // Supabase returned success but no user - email confirmation may be pending
-      // Try signing in immediately
-      window.sb.auth.signInWithPassword({ email: email, password: password }).then(function(loginRes){
-        if(loginRes.error || !loginRes.data || !loginRes.data.user){
-          toast('✅ Account created! Please check email to confirm, then Login.');
-          showVetScreen('login');
-          return;
-        }
-        continueVetRegistration(loginRes.data.user, name, qual, vci, email, phone, clinic, city, fee, spec);
-      });
-      return;
-    }
+      vetUid = cred.id; // reuse same UUID
+    }catch(e){}
+  }
 
-    continueVetRegistration(user, name, qual, vci, email, phone, clinic, city, fee, spec);
-  }); // signUp
+  localStorage.setItem(vetCredKey, JSON.stringify({ id: vetUid, email: email, password: password, vci: vci }));
+
+  var fakeUser = { id: vetUid, email: email };
+  continueVetRegistration(fakeUser, name, qual, vci, email, phone, clinic, city, fee, spec);
 }
 
 function continueVetRegistration(user, name, qual, vci, email, phone, clinic, city, fee, spec){
