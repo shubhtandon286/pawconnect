@@ -2209,10 +2209,14 @@ function dDoLogin(){
         if(sbn) sbn.textContent = 'Dr. ' + firstName;
         var sbs = document.getElementById('sidebarVetSub');
         if(sbs) sbs.textContent = (vetData.qualification||'BVSc') + ' · ' + (vetData.clinic_name||'');
-        document.getElementById('doctorLogin').style.display = 'none';
-        document.getElementById('doctorApp').style.display   = 'flex';
-        dSp('dashboard');
-        toast('✅ Welcome Dr. ' + firstName + '!');
+        if(vetData.is_active === false || vetData.is_pending === true){
+          showVetPendingScreen(vetData.name || email, email);
+        } else {
+          document.getElementById('doctorLogin').style.display = 'none';
+          document.getElementById('doctorApp').style.display   = 'flex';
+          dSp('dashboard');
+          toast('Welcome Dr. ' + firstName + '!');
+        }
       });
       return;
     }catch(e){}
@@ -2295,7 +2299,8 @@ function continueVetRegistration(user, name, qual, vci, email, phone, clinic, ci
       specialization: spec,
       vci_reg_no: vci,
       qualification: qual,
-      is_active: true,
+      is_active: false,
+      is_pending: true,
       rating: 5.0
     };
     window.currentVet  = vetData;
@@ -2319,11 +2324,50 @@ function continueVetRegistration(user, name, qual, vci, email, phone, clinic, ci
     var sbs = document.getElementById('sidebarVetSub');
     if(sbs) sbs.textContent = (qual||'BVSc') + ' · ' + clinic;
 
-    document.getElementById('doctorLogin').style.display = 'none';
-    document.getElementById('doctorApp').style.display   = 'flex';
-    dSp('dashboard');
-    toast('🎉 Welcome to PawConnect, Dr. ' + firstName + '!');
+    if(vetData.is_active){
+      document.getElementById('doctorLogin').style.display = 'none';
+      document.getElementById('doctorApp').style.display   = 'flex';
+      dSp('dashboard');
+      toast('Welcome to PawConnect, Dr. ' + firstName + '!');
+    } else {
+      showVetPendingScreen(name, email);
+    }
   });
+}
+
+function showVetPendingScreen(name, email){
+  document.getElementById('doctorLogin').style.display = 'none';
+  var existing = document.getElementById('vetPendingScreen');
+  if(existing){ existing.style.display = 'flex'; return; }
+  var div = document.createElement('div');
+  div.id = 'vetPendingScreen';
+  div.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#0F1923;padding:2rem;text-align:center;';
+  var firstName = (name||'').replace('Dr.','').trim().split(' ')[0];
+  div.innerHTML = '<div style="background:#1A2535;border-radius:20px;padding:2.5rem;max-width:480px;width:100%;">'
+    + '<div style="font-size:4rem;margin-bottom:1rem;">⏳</div>'
+    + '<h2 style="color:#E8DDD4;font-family:Playfair Display,serif;font-size:1.6rem;margin-bottom:.5rem;">Application Under Review</h2>'
+    + '<p style="color:#7A8FA6;font-size:.95rem;margin-bottom:1.5rem;">Hi Dr. ' + firstName + ', your profile has been submitted!</p>'
+    + '<div style="background:#0F1923;border-radius:12px;padding:1.2rem;margin-bottom:1.5rem;border:1px solid #2A3A4A;">'
+      + '<div style="display:flex;align-items:center;gap:1rem;margin-bottom:.8rem;">'
+        + '<div style="width:32px;height:32px;background:#F5A623;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✓</div>'
+        + '<div style="text-align:left;"><p style="color:#E8DDD4;font-size:.88rem;font-weight:600;margin:0;">Profile Submitted</p><p style="color:#7A8FA6;font-size:.75rem;margin:0;">Credentials received</p></div>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:1rem;margin-bottom:.8rem;">'
+        + '<div style="width:32px;height:32px;background:#2A3A4A;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem;">🔍</div>'
+        + '<div style="text-align:left;"><p style="color:#E8DDD4;font-size:.88rem;font-weight:600;margin:0;">Verification In Progress</p><p style="color:#7A8FA6;font-size:.75rem;margin:0;">VCI & credentials check</p></div>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:1rem;">'
+        + '<div style="width:32px;height:32px;background:#2A3A4A;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem;">🚀</div>'
+        + '<div style="text-align:left;"><p style="color:#7A8FA6;font-size:.88rem;font-weight:600;margin:0;">Go Live</p><p style="color:#4A6A8A;font-size:.75rem;margin:0;">Visible to pet parents</p></div>'
+      + '</div>'
+    + '</div>'
+    + '<div style="background:#1E3A2A;border-radius:10px;padding:1rem;margin-bottom:1.5rem;">'
+      + '<p style="color:#4CAF50;font-size:.88rem;font-weight:600;margin:0;">⏱ Estimated: 24–48 hours</p>'
+      + '<p style="color:#7A8FA6;font-size:.78rem;margin:.3rem 0 0;">Notification sent to ' + email + '</p>'
+    + '</div>'
+    + '<button onclick="dDoLogout()" style="background:none;border:1px solid #2A3A4A;color:#7A8FA6;border-radius:10px;padding:.7rem 1.5rem;font-family:DM Sans,sans-serif;cursor:pointer;font-size:.88rem;">← Back to Home</button>'
+    + '</div>';
+  document.getElementById('doctorSection').appendChild(div);
 }
 function dDoLogout(){
   window.sb.auth.signOut();
@@ -3061,6 +3105,7 @@ function loadVets(){
 }
 
 function renderVetCards(vets, grid){
+  vets = vets.filter(function(v){ return v.is_active === true; });
   var html = '';
   vets.forEach(function(vet){
     var stars = '★'.repeat(Math.round(vet.rating||5)) + '☆'.repeat(5-Math.round(vet.rating||5));

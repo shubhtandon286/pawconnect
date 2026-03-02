@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PawConnect Admin Panel</title>
+<style>
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:'Segoe UI',sans-serif; background:#0D1117; color:#E6EDF3; min-height:100vh; }
+
+  /* Login */
+  #loginScreen{
+    display:flex; align-items:center; justify-content:center; min-height:100vh;
+    background:linear-gradient(135deg,#0D1117 0%,#161B22 100%);
+  }
+  .login-box{
+    background:#161B22; border:1px solid #30363D; border-radius:16px;
+    padding:2.5rem; width:100%; max-width:380px; text-align:center;
+  }
+  .login-box h1{ font-size:1.4rem; margin-bottom:.3rem; color:#F0F6FC; }
+  .login-box p{ color:#8B949E; font-size:.85rem; margin-bottom:2rem; }
+  .login-box input{
+    width:100%; background:#0D1117; border:1px solid #30363D; border-radius:8px;
+    padding:.75rem 1rem; color:#E6EDF3; font-size:.9rem; margin-bottom:.8rem;
+    outline:none; transition:border-color .2s;
+  }
+  .login-box input:focus{ border-color:#58A6FF; }
+  .login-box button{
+    width:100%; background:#238636; color:#fff; border:none; border-radius:8px;
+    padding:.75rem; font-size:.95rem; cursor:pointer; font-weight:600; transition:background .2s;
+  }
+  .login-box button:hover{ background:#2EA043; }
+  .err{ color:#F85149; font-size:.82rem; margin-top:.5rem; }
+
+  /* Dashboard */
+  #dashboard{ display:none; }
+  .topbar{
+    background:#161B22; border-bottom:1px solid #30363D;
+    padding:1rem 2rem; display:flex; align-items:center; justify-content:space-between;
+  }
+  .topbar h1{ font-size:1.1rem; color:#F0F6FC; display:flex; align-items:center; gap:.6rem; }
+  .topbar-right{ display:flex; align-items:center; gap:1rem; }
+  .badge-count{
+    background:#DA3633; color:#fff; border-radius:20px;
+    padding:.2rem .6rem; font-size:.75rem; font-weight:700;
+  }
+  .logout-btn{
+    background:none; border:1px solid #30363D; color:#8B949E;
+    border-radius:8px; padding:.4rem .9rem; cursor:pointer; font-size:.82rem;
+  }
+  .logout-btn:hover{ border-color:#F85149; color:#F85149; }
+
+  .main{ padding:2rem; max-width:1200px; margin:0 auto; }
+
+  /* Stats */
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin-bottom:2rem; }
+  .stat-card{
+    background:#161B22; border:1px solid #30363D; border-radius:12px; padding:1.2rem;
+  }
+  .stat-card .num{ font-size:2rem; font-weight:700; margin-bottom:.2rem; }
+  .stat-card .lbl{ color:#8B949E; font-size:.8rem; }
+  .stat-card.pending .num{ color:#F0A500; }
+  .stat-card.approved .num{ color:#3FB950; }
+  .stat-card.rejected .num{ color:#F85149; }
+  .stat-card.total .num{ color:#58A6FF; }
+
+  /* Tabs */
+  .tabs{ display:flex; gap:.5rem; margin-bottom:1.5rem; border-bottom:1px solid #30363D; }
+  .tab{
+    padding:.6rem 1.2rem; background:none; border:none; color:#8B949E;
+    cursor:pointer; font-size:.88rem; border-bottom:2px solid transparent;
+    transition:all .2s; margin-bottom:-1px;
+  }
+  .tab.active{ color:#F0F6FC; border-bottom-color:#58A6FF; }
+
+  /* Table */
+  .table-wrap{ background:#161B22; border:1px solid #30363D; border-radius:12px; overflow:hidden; }
+  table{ width:100%; border-collapse:collapse; }
+  th{
+    background:#1C2128; padding:.8rem 1rem; text-align:left;
+    font-size:.78rem; color:#8B949E; text-transform:uppercase; letter-spacing:.05em;
+    border-bottom:1px solid #30363D;
+  }
+  td{ padding:.9rem 1rem; border-bottom:1px solid #21262D; font-size:.85rem; }
+  tr:last-child td{ border-bottom:none; }
+  tr:hover td{ background:#1C2128; }
+  .status-badge{
+    display:inline-block; padding:.2rem .7rem; border-radius:20px; font-size:.75rem; font-weight:600;
+  }
+  .status-badge.pending{ background:#3D2B00; color:#F0A500; }
+  .status-badge.approved{ background:#1A3A1F; color:#3FB950; }
+  .status-badge.rejected{ background:#3D1A1A; color:#F85149; }
+
+  /* Action buttons */
+  .btn-approve{
+    background:#238636; color:#fff; border:none; border-radius:6px;
+    padding:.35rem .8rem; font-size:.78rem; cursor:pointer; margin-right:.4rem; transition:background .2s;
+  }
+  .btn-approve:hover{ background:#2EA043; }
+  .btn-reject{
+    background:#DA3633; color:#fff; border:none; border-radius:6px;
+    padding:.35rem .8rem; font-size:.78rem; cursor:pointer; transition:background .2s;
+  }
+  .btn-reject:hover{ background:#F85149; }
+  .btn-view{
+    background:#21262D; color:#8B949E; border:1px solid #30363D; border-radius:6px;
+    padding:.35rem .8rem; font-size:.78rem; cursor:pointer; margin-right:.4rem; transition:all .2s;
+  }
+  .btn-view:hover{ background:#30363D; color:#E6EDF3; }
+
+  /* Detail modal */
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.7);
+    z-index:100; align-items:center; justify-content:center;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal{
+    background:#161B22; border:1px solid #30363D; border-radius:16px;
+    padding:2rem; max-width:520px; width:90%; max-height:85vh; overflow-y:auto;
+  }
+  .modal h2{ font-size:1.1rem; margin-bottom:1.5rem; color:#F0F6FC; }
+  .detail-row{ display:flex; margin-bottom:.8rem; gap:1rem; }
+  .detail-label{ color:#8B949E; font-size:.82rem; min-width:120px; padding-top:.1rem; }
+  .detail-value{ color:#E6EDF3; font-size:.85rem; flex:1; }
+  .modal-actions{ display:flex; gap:.8rem; margin-top:1.5rem; padding-top:1.5rem; border-top:1px solid #30363D; }
+  .modal-actions button{ flex:1; padding:.7rem; border-radius:8px; border:none; cursor:pointer; font-size:.88rem; font-weight:600; }
+  .modal-close{ background:#21262D; color:#8B949E; border:1px solid #30363D !important; border-radius:8px; padding:.5rem 1rem; cursor:pointer; font-size:.82rem; }
+
+  /* Empty state */
+  .empty{ text-align:center; padding:3rem; color:#8B949E; }
+  .empty .icon{ font-size:3rem; margin-bottom:.5rem; }
+
+  /* Toast */
+  #toast{
+    position:fixed; bottom:2rem; left:50%; transform:translateX(-50%);
+    background:#1C2128; border:1px solid #30363D; color:#E6EDF3;
+    padding:.7rem 1.5rem; border-radius:10px; font-size:.88rem;
+    opacity:0; transition:opacity .3s; z-index:999; pointer-events:none;
+  }
+  #toast.show{ opacity:1; }
+
+  .search-bar{
+    background:#0D1117; border:1px solid #30363D; border-radius:8px;
+    padding:.6rem 1rem; color:#E6EDF3; font-size:.88rem; width:280px; outline:none;
+    margin-bottom:1rem;
+  }
+  .search-bar:focus{ border-color:#58A6FF; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div style="font-size:2.5rem;margin-bottom:.8rem;">🐾</div>
+    <h1>PawConnect Admin</h1>
+    <p>Vet verification & management portal</p>
+    <input type="text" id="adminUser" placeholder="Admin username" />
+    <input type="password" id="adminPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()" />
+    <button onclick="doLogin()">Sign In →</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="topbar">
+    <h1>🐾 PawConnect Admin <span style="color:#8B949E;font-weight:400;font-size:.85rem;">· Vet Verification Portal</span></h1>
+    <div class="topbar-right">
+      <span style="color:#8B949E;font-size:.82rem;">Pending: <span class="badge-count" id="pendingBadge">0</span></span>
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card total"><div class="num" id="statTotal">0</div><div class="lbl">Total Applications</div></div>
+      <div class="stat-card pending"><div class="num" id="statPending">0</div><div class="lbl">Pending Review</div></div>
+      <div class="stat-card approved"><div class="num" id="statApproved">0</div><div class="lbl">Approved & Live</div></div>
+      <div class="stat-card rejected"><div class="num" id="statRejected">0</div><div class="lbl">Rejected</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('pending',this)">⏳ Pending</button>
+      <button class="tab" onclick="switchTab('approved',this)">✅ Approved</button>
+      <button class="tab" onclick="switchTab('rejected',this)">❌ Rejected</button>
+      <button class="tab" onclick="switchTab('all',this)">📋 All</button>
+    </div>
+
+    <input class="search-bar" id="searchBar" placeholder="🔍 Search by name, email, city..." oninput="renderTable()" />
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Doctor</th>
+            <th>Clinic & City</th>
+            <th>Specialization</th>
+            <th>VCI Reg No.</th>
+            <th>Applied</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="vetTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h2>👨‍⚕️ Vet Application Details</h2>
+    <div id="modalBody"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── ADMIN CREDENTIALS (change these!) ──
+const ADMIN_USER = 'pawconnect';
+const ADMIN_PASS = 'admin@2026';
+
+// ── STATE ──
+let currentTab    = 'pending';
+let selectedVet   = null;
+let allVets       = [];
+
+// ── LOGIN ──
+function doLogin(){
+  var u = document.getElementById('adminUser').value.trim();
+  var p = document.getElementById('adminPass').value.trim();
+  if(u === ADMIN_USER && p === ADMIN_PASS){
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display  = 'block';
+    loadVets();
+  } else {
+    document.getElementById('loginErr').textContent = '❌ Invalid credentials';
+  }
+}
+
+function doLogout(){
+  document.getElementById('dashboard').style.display  = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('adminUser').value = '';
+  document.getElementById('adminPass').value = '';
+}
+
+// ── LOAD VETS from localStorage (shared with main app) ──
+function loadVets(){
+  // Read ALL vet data: pending + approved
+  var raw = [];
+
+  // From pawconnect_all_vets (all registered vets)
+  try{ raw = JSON.parse(localStorage.getItem('pawconnect_all_vets') || '[]'); }catch(e){}
+
+  // Merge with admin_vets (admin-modified records)
+  var adminData = {};
+  try{ adminData = JSON.parse(localStorage.getItem('pawconnect_admin_vets') || '{}'); }catch(e){}
+
+  // Apply admin overrides
+  allVets = raw.map(function(v){
+    if(adminData[v.email]){
+      return Object.assign({}, v, adminData[v.email]);
+    }
+    return v;
+  });
+
+  // Add any vets in adminData not in raw
+  Object.keys(adminData).forEach(function(email){
+    if(!allVets.find(function(v){ return v.email === email; })){
+      allVets.push(adminData[email]);
+    }
+  });
+
+  updateStats();
+  renderTable();
+}
+
+function updateStats(){
+  var pending  = allVets.filter(function(v){ return v.is_pending || v.is_active === false; }).length;
+  var approved = allVets.filter(function(v){ return v.is_active === true && !v.is_pending; }).length;
+  var rejected = allVets.filter(function(v){ return v.is_rejected === true; }).length;
+
+  document.getElementById('statTotal').textContent    = allVets.length;
+  document.getElementById('statPending').textContent  = pending;
+  document.getElementById('statApproved').textContent = approved;
+  document.getElementById('statRejected').textContent = rejected;
+  document.getElementById('pendingBadge').textContent = pending;
+}
+
+// ── RENDER TABLE ──
+function switchTab(tab, el){
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  el.classList.add('active');
+  renderTable();
+}
+
+function renderTable(){
+  var search = document.getElementById('searchBar').value.toLowerCase();
+  var filtered = allVets.filter(function(v){
+    // Tab filter
+    if(currentTab === 'pending')  return (v.is_pending || v.is_active === false) && !v.is_rejected;
+    if(currentTab === 'approved') return v.is_active === true && !v.is_pending && !v.is_rejected;
+    if(currentTab === 'rejected') return v.is_rejected === true;
+    return true; // all
+  }).filter(function(v){
+    if(!search) return true;
+    return (v.name||'').toLowerCase().includes(search)
+      || (v.email||'').toLowerCase().includes(search)
+      || (v.city||'').toLowerCase().includes(search)
+      || (v.clinic_name||'').toLowerCase().includes(search);
+  });
+
+  var tbody = document.getElementById('vetTableBody');
+
+  if(filtered.length === 0){
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="icon">📭</div>No applications found</div></td></tr>';
+    return;
+  }
+
+  var html = '';
+  filtered.forEach(function(v, i){
+    var status = v.is_rejected ? 'rejected' : (v.is_active && !v.is_pending) ? 'approved' : 'pending';
+    var statusLabel = v.is_rejected ? 'Rejected' : (v.is_active && !v.is_pending) ? 'Approved' : 'Pending';
+    var appliedDate = v.applied_at ? new Date(v.applied_at).toLocaleDateString('en-IN') : 'Today';
+    html += '<tr>'
+      + '<td style="color:#8B949E;">' + (i+1) + '</td>'
+      + '<td><div style="font-weight:600;color:#F0F6FC;">' + (v.name||'—') + '</div>'
+      +     '<div style="color:#8B949E;font-size:.78rem;">' + (v.email||'') + '</div></td>'
+      + '<td><div>' + (v.clinic_name||'—') + '</div>'
+      +     '<div style="color:#8B949E;font-size:.78rem;">📍 ' + (v.city||'—') + '</div></td>'
+      + '<td style="color:#8B949E;">' + (v.specialization||'General Practice') + '</td>'
+      + '<td style="font-family:monospace;color:#58A6FF;">' + (v.vci_reg_no||'—') + '</td>'
+      + '<td style="color:#8B949E;font-size:.8rem;">' + appliedDate + '</td>'
+      + '<td><span class="status-badge ' + status + '">' + statusLabel + '</span></td>'
+      + '<td>'
+      +   '<button class="btn-view" onclick="viewVet(\'' + encodeURIComponent(v.email) + '\')">View</button>'
+      +   (status !== 'approved' ? '<button class="btn-approve" onclick="approveVet(\'' + encodeURIComponent(v.email) + '\')">✓ Approve</button>' : '')
+      +   (status !== 'rejected' ? '<button class="btn-reject" onclick="rejectVet(\'' + encodeURIComponent(v.email) + '\')">✗ Reject</button>' : '')
+      + '</td>'
+      + '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+// ── APPROVE / REJECT ──
+function approveVet(emailEnc){
+  var email = decodeURIComponent(emailEnc);
+  updateVetStatus(email, { is_active: true, is_pending: false, is_rejected: false });
+  toast('✅ Dr. approved and now live on PawConnect!');
+  loadVets();
+  closeModal();
+}
+
+function rejectVet(emailEnc){
+  var email = decodeURIComponent(emailEnc);
+  if(!confirm('Reject this vet application?')) return;
+  updateVetStatus(email, { is_active: false, is_pending: false, is_rejected: true });
+  toast('❌ Application rejected.');
+  loadVets();
+  closeModal();
+}
+
+function updateVetStatus(email, updates){
+  // Update in allVets array
+  allVets = allVets.map(function(v){
+    if(v.email === email) return Object.assign({}, v, updates);
+    return v;
+  });
+
+  // Save back to pawconnect_all_vets (main app reads this)
+  localStorage.setItem('pawconnect_all_vets', JSON.stringify(allVets));
+
+  // Also save admin overrides separately
+  var adminData = {};
+  try{ adminData = JSON.parse(localStorage.getItem('pawconnect_admin_vets') || '{}'); }catch(e){}
+  adminData[email] = Object.assign(adminData[email]||{}, updates, {email:email});
+  localStorage.setItem('pawconnect_admin_vets', JSON.stringify(adminData));
+}
+
+// ── VIEW DETAILS ──
+function viewVet(emailEnc){
+  var email = decodeURIComponent(emailEnc);
+  var v = allVets.find(function(x){ return x.email === email; });
+  if(!v) return;
+  selectedVet = v;
+
+  var status = v.is_rejected ? 'rejected' : (v.is_active && !v.is_pending) ? 'approved' : 'pending';
+
+  document.getElementById('modalBody').innerHTML =
+    row('Full Name',      v.name        || '—') +
+    row('Email',         v.email        || '—') +
+    row('Phone',         v.phone        || '—') +
+    row('Qualification', v.qualification|| '—') +
+    row('VCI Reg No.',   v.vci_reg_no   || '—') +
+    row('Clinic Name',   v.clinic_name  || '—') +
+    row('City',          v.city         || '—') +
+    row('Specialization',v.specialization||'General Practice') +
+    row('Consultation Fee', '₹' + (v.fee||400)) +
+    row('Status', '<span class="status-badge '+status+'">' + (status.charAt(0).toUpperCase()+status.slice(1)) + '</span>');
+
+  var actions = '<button class="modal-close" onclick="closeModal()">Close</button>';
+  if(status !== 'approved') actions += '<button class="btn-approve" style="flex:1;padding:.7rem;font-size:.88rem;" onclick="approveVet(\''+encodeURIComponent(email)+'\')">✓ Approve & Go Live</button>';
+  if(status !== 'rejected') actions += '<button class="btn-reject" style="flex:1;padding:.7rem;font-size:.88rem;" onclick="rejectVet(\''+encodeURIComponent(email)+'\')">✗ Reject</button>';
+
+  document.getElementById('modalActions').innerHTML = actions;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function row(label, value){
+  return '<div class="detail-row"><div class="detail-label">'+label+'</div><div class="detail-value">'+value+'</div></div>';
+}
+
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  selectedVet = null;
+}
+
+// ── TOAST ──
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3000);
+}
+
+// Auto-refresh every 10 seconds to catch new applications
+setInterval(loadVets, 10000);
+</script>
+</body>
+</html>
