@@ -1068,7 +1068,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
         <button class="send-btn" onclick="sendOTP()">Send OTP</button>
       </div>
       <div id="otpSection" style="display:none;margin-top:1.1rem;">
-        <p style="font-size:.8rem;color:#6A5A50;margin-bottom:.7rem;">Enter OTP sent to your number</p><p style="font-size:.75rem;color:#8B4513;margin-bottom:.5rem;font-weight:600;">Test OTP: 123456 (must send OTP first each time)</p>
+        <div style="background:#FFF3E0;border-radius:10px;padding:.8rem;margin-bottom:.8rem;text-align:center;">
+          <p style="font-size:.82rem;color:#8B4513;font-weight:600;margin-bottom:.2rem;">OTP sent! Enter it quickly within 60 seconds</p>
+          <p style="font-size:.78rem;color:#6A5A50;">Test number: use <strong>123456</strong></p>
+        </div>
         <div class="otp-input-row">
           <input class="otp-box" maxlength="1" oninput="otpNext(this,0)" id="o0">
           <input class="otp-box" maxlength="1" oninput="otpNext(this,1)" id="o1">
@@ -1077,7 +1080,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
           <input class="otp-box" maxlength="1" oninput="otpNext(this,4)" id="o4">
           <input class="otp-box" maxlength="1" oninput="otpNext(this,5)" id="o5">
         </div>
-        <button class="btn-primary" style="width:100%;margin-top:.9rem;" onclick="verifyOTP()">Verify OTP</button>
+        <button class="btn-primary" style="width:100%;margin-top:.9rem;" onclick="verifyOTP()">✅ Verify OTP</button>
+        <button onclick="resendOTP()" style="width:100%;margin-top:.5rem;background:none;border:1.5px solid #C8B8A8;border-radius:22px;padding:.6rem;font-family:'DM Sans',sans-serif;cursor:pointer;color:#6A5A50;font-size:.85rem;">🔄 Resend OTP</button>
       </div>
       <div id="verifiedBadge" style="display:none;margin-top:1rem;background:#E8F5E9;border:1.5px solid var(--sage);border-radius:12px;padding:.8rem;color:var(--sage);font-weight:600;font-size:.88rem;">✅ Verified! Welcome to PawConnect 🐾</div>
     </div>
@@ -2279,6 +2283,12 @@ function addCart(name, price, icon) {
 }
 
 // ── OTP ──
+function resendOTP(){
+  // Clear boxes
+  for(var i=0;i<6;i++){ var b=document.getElementById('o'+i); if(b) b.value=''; }
+  sendOTP();
+}
+
 function sendOTP(){
   var phone   = document.getElementById('phoneInput').value.trim();
   var digits  = phone.replace(/[^0-9]/g,'');
@@ -2592,70 +2602,14 @@ function dDoRegister(){
     
     var user   = res.data && res.data.user ? res.data.user : null;
     var userId = user ? user.id : null;
-    
+
     if(!userId){
-      // Supabase sometimes needs email confirmation - try signing in
-      window.sb.auth.signInWithPassword({ email: email, password: password }).then(function(r2){
-        if(!r2.error && r2.data && r2.data.user){
-          continueVetRegistration(r2.data.user, name, qual, vci, email, phone, clinic, city, fee, spec);
-        } else {
-          toast('Account created! Please check email to confirm, then login.');
-        }
-      });
+      toast('Account created! Please login now.');
+      showVetScreen('login');
       return;
     }
 
-    console.log('User created:', userId);
-
-    // Save to vets table
-    window.sb.from('vets').insert({
-      auth_id:        userId,
-      name:           name,
-      qualification:  qual,
-      vci_reg_no:     vci,
-      email:          email,
-      phone:          phone,
-      clinic_name:    clinic,
-      city:           city,
-      fee:            parseInt(fee) || 400,
-      specialization: spec,
-      is_verified:    false,
-      is_active:      true,
-      rating:         5.0,
-      experience:     1
-    }).then(function(vres){
-      if(vres.error){ 
-        console.log('Vet insert error:', JSON.stringify(vres.error));
-        // Still let them in even if vets table insert fails
-        // (column might not exist yet)
-      }
-
-      var vetData = { 
-        id:          userId,
-        auth_id:     userId,
-        name:        name, 
-        clinic_name: clinic, 
-        city:        city,
-        email:       email,
-        fee:         parseInt(fee) || 400,
-        specialization: spec
-      };
-
-      window.currentVet  = vetData;
-      window.currentUser = user;
-      localStorage.setItem('pawconnect_vet', JSON.stringify(vetData));
-
-      var firstName = name.replace('Dr.','').trim().split(' ')[0];
-      var greeting = document.getElementById('vetGreeting');
-      if(greeting) greeting.textContent = 'Welcome, Dr. ' + firstName + ' 👋';
-      var clinicLine = document.getElementById('vetClinicLine');
-      if(clinicLine) clinicLine.textContent = clinic + ', ' + city;
-
-      document.getElementById('doctorLogin').style.display = 'none';
-      document.getElementById('doctorApp').style.display   = 'flex';
-      dSp('dashboard');
-      toast('🎉 Welcome to PawConnect, Dr. ' + firstName + '!');
-    });
+    continueVetRegistration(user, name, qual, vci, email, phone, clinic, city, fee, spec);
   }); // signUp
   }); // signIn check
 }
