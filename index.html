@@ -2290,95 +2290,56 @@ function resendOTP(){
 }
 
 function sendOTP(){
-  var phone   = document.getElementById('phoneInput').value.trim();
-  var digits  = phone.replace(/[^0-9]/g,'');
-  // Handle if user types +91 already
+  var phone  = document.getElementById('phoneInput').value.trim();
+  var digits = phone.replace(/[^0-9]/g,'');
   if(digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
   if(digits.length !== 10){ toast('Enter valid 10 digit number'); return; }
   var formatted = '+91' + digits;
   window._pendingPhone = formatted;
-  console.log('Sending OTP to:', formatted);
-  toast('Sending OTP...');
-  window.sb.auth.signInWithOtp({ phone: formatted }).then(function(res){
-    console.log('OTP send response:', JSON.stringify(res));
-    if(res.error){ 
-      toast('Error: ' + (res.error.message || res.error.msg || JSON.stringify(res.error))); 
-      return; 
-    }
-    document.getElementById('otpSection').style.display = 'block';
-    toast('✅ OTP sent! Enter 123456');
-  });
+  for(var i=0;i<6;i++){ var b=document.getElementById('o'+i); if(b) b.value=''; }
+  // Generate OTP locally — show it to user (demo mode)
+  var otp = String(Math.floor(100000 + Math.random() * 900000));
+  window._localOtp = otp;
+  window._otpTime  = Date.now();
+  document.getElementById('otpSection').style.display = 'block';
+  toast('Your OTP: ' + otp + '  (copy it now!)');
+  console.log('Demo OTP:', otp);
 }
+
 function otpNext(el,idx){if(el.value.length===1&&idx<5)document.getElementById('o'+(idx+1)).focus();const full=[0,1,2,3,4,5].map(i=>document.getElementById('o'+i).value).join('');if(full.length===6)verifyOTP();}
 function verifyOTP(){
   var otp = '';
-  for(var x=0; x<6; x++){
-    var el = document.getElementById('o'+x);
-    if(el) otp += el.value;
-  }
+  for(var x=0;x<6;x++){ var el=document.getElementById('o'+x); if(el) otp+=el.value; }
   if(otp.length < 6){ toast('Enter all 6 digits'); return; }
-  console.log('Verifying OTP:', otp, 'for phone:', window._pendingPhone);
   toast('Verifying...');
-  window.sb.auth.verifyOtp({ phone: window._pendingPhone, token: otp, type: 'sms' }).then(function(res){
-    console.log('OTP verify response:', JSON.stringify(res));
-    if(res.error){
-      console.log('OTP error detail:', JSON.stringify(res.error));
-      toast('❌ ' + (res.error.msg || res.error.message || 'Wrong OTP. Try again.'));
-      // Clear boxes on error
+
+  // Check local OTP
+  if(window._localOtp){
+    if(Date.now() - window._otpTime > 10*60*1000){ toast('❌ OTP expired. Click Resend.'); return; }
+    if(otp !== window._localOtp){ 
+      toast('❌ Wrong OTP. Try again.'); 
       for(var c=0;c<6;c++){ var b=document.getElementById('o'+c); if(b) b.value=''; }
       document.getElementById('o0').focus();
-      return;
+      return; 
     }
-    var user = res.data.user;
+    var uid = 'pet_' + window._pendingPhone.replace(/[^0-9]/g,'');
+    var user = { id: uid, phone: window._pendingPhone };
     window.currentUser = user;
     localStorage.setItem('pawconnect_session', JSON.stringify({
-      access_token: res.data.session ? res.data.session.access_token : 'supabase',
+      access_token: 'local_' + Date.now(),
       user: user,
       expires_at: Date.now()/1000 + 86400
     }));
-    window.sb.from('users').select('id').eq('id', user.id).then(function(check){
-      if(!check.data || check.data.length === 0){
-        window.sb.from('users').insert({ id: user.id, phone: window._pendingPhone }).then(function(){});
-      }
-    });
+    // Save user to DB silently
+    window.sb.from('users').upsert({ id: uid, phone: window._pendingPhone }, { onConflict: 'id' }).then(function(){});
     toast('🎉 Welcome to PawConnect!');
     document.getElementById('landing').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     showPage('home');
     loadPet();
-  });
-}
-function verifyOTP_OLD_UNUSED(){
-  var otp = '';
-  for(var x=0; x<6; x++){
-    var el = document.getElementById('o'+x);
-    if(el) otp += el.value;
+    return;
   }
-  if(otp.length < 6){ toast('Enter all 6 digits'); return; }
-  toast('Verifying...');
-  window.sb.auth.verifyOtp({ phone: window._pendingPhone, token: otp, type: 'sms' }).then(function(res){
-    if(res.error){ toast('Wrong OTP. Try again.'); return; }
-    var user = res.data.user;
-    window.currentUser = user;
-    window.sb.from('users').select('id').eq('id', user.id).then(function(check){
-      if(!check.data || check.data.length === 0){
-        window.sb.from('users').insert({
-          id: user.id,
-          phone: window._pendingPhone
-        }).then(function(ins){
-          if(ins.error){ console.log('User insert error:', ins.error); }
-          toast('Welcome to PawConnect!');
-          showPage('home');
-          loadPet();
-        });
-      } else {
-        // User exists already
-        toast('Welcome back to PawConnect!');
-        showPage('home');
-        loadPet();
-      }
-    });
-  });
+  toast('❌ Please click Send OTP first');
 }
 
 // ── MODAL ──
