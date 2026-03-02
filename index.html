@@ -2583,6 +2583,7 @@ function continueVetRegistration(user, name, qual, vci, email, phone, clinic, ci
   var firstName = name.replace('Dr.','').trim().split(' ')[0];
 
   window.sb.from('vets').insert({
+    id:             userId,
     auth_id:        userId,
     name:           name,
     qualification:  qual,
@@ -2598,6 +2599,7 @@ function continueVetRegistration(user, name, qual, vci, email, phone, clinic, ci
     rating:         5.0,
     experience:     1
   }).then(function(vres){
+    console.log('Vet insert result:', JSON.stringify(vres));
     if(vres.error) console.log('Vet insert error:', JSON.stringify(vres.error));
 
     var vetData = {
@@ -3242,7 +3244,8 @@ function loadPetsForMating(){
     var bgColors = { Dog:'#FFF3E0', Cat:'#FFF8E1', Rabbit:'#E8F5E9', Bird:'#E3F2FD', dog:'#FFF3E0', cat:'#FFF8E1' };
     var html = '';
     res.data.forEach(function(pet){
-      if(window.currentUser && (pet.user_id === window.currentUser.id || pet.id === window.currentUser.id)) return;
+      // Skip own pet (compare by user_id if available)
+      if(window.currentUser && pet.user_id && pet.user_id === window.currentUser.id) return;
       var type = pet.type || pet.pet_type || 'Dog';
       var icon = petIcons[type] || '🐾';
       var bg   = bgColors[type] || '#FFF3E0';
@@ -3300,10 +3303,20 @@ function sendConnectRequest(){
 
 // ══ LOAD REAL VETS ══
 function loadVets(){
-  window.sb.from('vets').select('*').eq('is_active', true).then(function(res){
-    if(res.error || !res.data || res.data.length === 0) return;
-    var grid = document.getElementById('vetCardGrid');
+  var grid = document.getElementById('vetCardGrid');
+  if(grid) grid.innerHTML = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">Loading vets...</div>';
+  // No filter - show ALL vets including newly registered ones
+  window.sb.from('vets').select('*').then(function(res){
+    console.log('Vets query result:', JSON.stringify(res));
     if(!grid) return;
+    if(res.error){
+      grid.innerHTML = '<div style="text-align:center;color:#9A8070;padding:2rem;grid-column:1/-1;">Error: ' + res.error.message + '</div>';
+      return;
+    }
+    if(!res.data || res.data.length === 0){
+      grid.innerHTML = '<div style="text-align:center;padding:2rem;grid-column:1/-1;"><div style="font-size:3rem;">🩺</div><p style="color:#6A5A50;font-weight:600;margin:.5rem 0;">No vets registered yet</p><p style="color:#9A8070;font-size:.85rem;">Be the first to register your clinic!</p></div>';
+      return;
+    }
     var html = '';
     res.data.forEach(function(vet){
       var stars = '★'.repeat(Math.round(vet.rating||5)) + '☆'.repeat(5-Math.round(vet.rating||5));
