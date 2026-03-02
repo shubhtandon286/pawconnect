@@ -2240,16 +2240,31 @@ function continueVetRegistration(user, name, qual, vci, email, phone, clinic, ci
       city: city, email: email,
       fee: parseInt(fee)||400,
       specialization: spec,
-      vci_reg_no: vci
+      vci_reg_no: vci,
+      qualification: qual,
+      is_active: true,
+      rating: 5.0
     };
     window.currentVet  = vetData;
     window.currentUser = user;
     localStorage.setItem('pawconnect_vet', JSON.stringify(vetData));
 
+    // ★ SAVE TO SHARED VET LIST — this is what makes vet appear on parents portal
+    var allVets = [];
+    try{ allVets = JSON.parse(localStorage.getItem('pawconnect_all_vets')||'[]'); }catch(e){}
+    allVets = allVets.filter(function(v){ return v.email !== email; }); // remove old entry
+    allVets.push(vetData);
+    localStorage.setItem('pawconnect_all_vets', JSON.stringify(allVets));
+    console.log('✅ Vet saved to shared list. Total vets:', allVets.length);
+
     var greeting = document.getElementById('vetGreeting');
     if(greeting) greeting.textContent = 'Welcome, Dr. ' + firstName + ' 👋';
     var clinicLine = document.getElementById('vetClinicLine');
     if(clinicLine) clinicLine.textContent = clinic + ', ' + city;
+    var sbn = document.getElementById('sidebarVetName');
+    if(sbn) sbn.textContent = 'Dr. ' + firstName;
+    var sbs = document.getElementById('sidebarVetSub');
+    if(sbs) sbs.textContent = (qual||'BVSc') + ' · ' + clinic;
 
     document.getElementById('doctorLogin').style.display = 'none';
     document.getElementById('doctorApp').style.display   = 'flex';
