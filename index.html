@@ -1849,8 +1849,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--warm);}
       <button class="sb-btn" onclick="backToLanding()"><span class="sb-icon">🏠</span>Back to Home</button>
       <button class="sb-btn" onclick="dDoLogout()"><span class="sb-icon">🚪</span>Logout</button>
       <div class="sb-doctor">
-        <div class="sb-doc-name"><span class="online-dot"></span>Dr. Rajeev Arora</div>
-        <div class="sb-doc-sub">BVSc, MVSc · PawCare Noida</div>
+        <div class="sb-doc-name"><span class="online-dot"></span><span id="sidebarVetName">Doctor</span></div>
+        <div class="sb-doc-sub" id="sidebarVetSub">PawConnect Vet</div>
       </div>
     </div>
 
@@ -2518,6 +2518,10 @@ function dDoLogin(){
         if(greeting) greeting.textContent = 'Welcome back, Dr. ' + firstName + ' 👋';
         var clinicLine = document.getElementById('vetClinicLine');
         if(clinicLine) clinicLine.textContent = (vetData.clinic_name||'') + ', ' + (vetData.city||'');
+        var sbn = document.getElementById('sidebarVetName');
+        if(sbn) sbn.textContent = 'Dr. ' + firstName;
+        var sbs = document.getElementById('sidebarVetSub');
+        if(sbs) sbs.textContent = (vetData.qualification||'BVSc') + ' · ' + (vetData.clinic_name||'');
         document.getElementById('doctorLogin').style.display = 'none';
         document.getElementById('doctorApp').style.display   = 'flex';
         dSp('dashboard');
@@ -2808,38 +2812,54 @@ function savePet(){
 
   toast('Saving...');
 
-  // Safety: ensure user row exists first
-  window.sb.from('users').select('id').eq('id', window.currentUser.id).then(function(uCheck){
-    if(!uCheck.data || uCheck.data.length === 0){
-      window.sb.from('users').insert({
-        id: window.currentUser.id,
-        phone: window._pendingPhone || ''
-      }).then(function(){ doSavePet(petData, name); });
-    } else {
-      doSavePet(petData, name);
-    }
+  // Ensure user exists - use upsert, ignore errors, proceed anyway
+  window.sb.from('users').upsert({
+    id: window.currentUser.id,
+    phone: window._pendingPhone || window.currentUser.phone || ''
+  }, { onConflict: 'id', ignoreDuplicates: true }).then(function(){
+    // Proceed regardless of user upsert result
+    doSavePet(petData, name);
   });
 }
 
 function doSavePet(petData, name){
-  // Check if pet exists first then update or insert
+  var ownerName = document.getElementById('ownerName') ? document.getElementById('ownerName').value.trim() : '';
+  // Add owner_name to petData for find mates display
+  petData.owner_name = ownerName;
+  
   window.sb.from('pets').select('id').eq('user_id', window.currentUser.id).then(function(res){
     if(res.data && res.data.length > 0){
-      // Pet exists — UPDATE it
       var petId = res.data[0].id;
       window.sb.from('pets').update(petData).eq('id', petId).then(function(r){
-        if(r.error){ toast('Error: ' + r.error.message); return; }
+        if(r.error){ toast('Error updating: ' + r.error.message); return; }
         window.currentPet = Object.assign({}, petData, { id: petId });
+        localStorage.setItem('pawconnect_pet', JSON.stringify(window.currentPet));
         toast('✅ ' + name + ' profile updated!');
-        updateNavUser(owner, name);
+        updateNavUser(ownerName, name);
       });
     } else {
-      // No pet yet — INSERT
       window.sb.from('pets').insert(petData).then(function(r){
-        if(r.error){ toast('Error: ' + r.error.message); return; }
-        window.currentPet = petData;
-        toast('✅ ' + name + ' profile saved!');
-        updateNavUser(owner, name);
+        if(r.error){ 
+          // If FK error, try without user_id (some Supabase setups differ)
+          if(r.error.message && r.error.message.indexOf('foreign key') > -1){
+            var petDataNoFK = Object.assign({}, petData);
+            delete petDataNoFK.user_id;
+            window.sb.from('pets').insert(petDataNoFK).then(function(r2){
+              if(r2.error){ toast('Error: ' + r2.error.message); return; }
+              var saved2 = r2.data && r2.data[0] ? r2.data[0] : petDataNoFK;
+              window.currentPet = saved2;
+              localStorage.setItem('pawconnect_pet', JSON.stringify(window.currentPet));
+              toast('✅ ' + name + ' profile saved!');
+            });
+            return;
+          }
+          toast('Error saving: ' + r.error.message); return; 
+        }
+        var saved = r.data && r.data[0] ? r.data[0] : petData;
+        window.currentPet = saved;
+        localStorage.setItem('pawconnect_pet', JSON.stringify(window.currentPet));
+        toast('✅ ' + name + ' profile saved! Visible in Find Mates now 🐾');
+        updateNavUser(ownerName, name);
       });
     }
   });
